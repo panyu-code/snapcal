@@ -166,6 +166,8 @@ struct ProfileView: View {
             Divider().overlay(.weakFill)
             cell(icon: "🎨", title: "外观", value: theme.mode.label) { showThemePicker = true }
             Divider().overlay(Color.dividerLine)
+            cell(icon: "📦", title: "食物库", value: "622 种") { showFoodLibrary = true }
+            Divider().overlay(Color.dividerLine)
             cell(icon: "❤️", title: "健康数据 (Apple 健康)", value: "M4") {}
             Divider().overlay(.weakFill)
             cell(icon: "💎", title: "SnapCal Pro", value: "M5") {}
