@@ -9,6 +9,9 @@ import com.snapcal.module.user.dto.ProfileUpdateReqDTO;
 import com.snapcal.module.user.entity.User;
 import com.snapcal.module.user.entity.Weight;
 import com.snapcal.module.user.mapper.UserMapper;
+import com.snapcal.config.oss.OssService;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.ByteArrayInputStream;
 import com.snapcal.module.user.mapper.WeightMapper;
 import com.snapcal.module.user.service.UserService;
 import com.snapcal.module.user.vo.UserVO;
@@ -33,6 +36,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
     private final WeightMapper weightMapper;
+    private final OssService ossService;
     private final AppleTokenVerifier appleTokenVerifier;
     private final JwtUtil jwtUtil;
 
@@ -103,6 +107,31 @@ public class UserServiceImpl implements UserService {
         }
         userMapper.updateById(user);
         return UserVO.of(user, latestWeight(user.getId()));
+    }
+
+    @Override
+    public UserVO uploadAvatar(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException("请选择头像图片");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new BizException("仅支持图片文件");
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new BizException("图片不能超过 5MB");
+        }
+        try {
+            String url = ossService.upload("avatar", ".jpg",
+                    new ByteArrayInputStream(file.getBytes()), file.getSize(),
+                    org.springframework.http.MediaType.IMAGE_JPEG_VALUE);
+            User user = requireUser();
+            user.setAvatar(url);
+            userMapper.updateById(user);
+            return UserVO.of(user, latestWeight(user.getId()));
+        } catch (Exception e) {
+            throw new BizException("头像上传失败");
+        }
     }
 
     // ===================== 内部 =====================

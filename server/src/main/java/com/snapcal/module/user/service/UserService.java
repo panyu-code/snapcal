@@ -20,4 +20,7 @@ public interface UserService {
 
     /** 更新资料并重算每日热量目标 */
     UserVO updateProfile(ProfileUpdateReqDTO dto);
+
+    /** 上传头像 */
+    UserVO uploadAvatar(org.springframework.web.multipart.MultipartFile file);
 }

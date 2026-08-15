@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 /// 我的页: 个人资料 + 目标进度 + 设置 (照原型⑥)
 struct ProfileView: View {
@@ -7,6 +8,8 @@ struct ProfileView: View {
     @State private var showEdit = false
     @State private var showLogout = false
     @State private var showThemePicker = false
+    @State private var avatarPickerItem: PhotosPickerItem?
+    @State private var avatarUploading = false
 
     private var user: User? { app.user }
 
@@ -29,6 +32,10 @@ struct ProfileView: View {
             .confirmationDialog("退出登录?", isPresented: $showLogout, titleVisibility: .visible) {
                 Button("退出", role: .destructive) { app.logout() }
             }
+            .onChange(of: avatarPickerItem) { _, newItem in
+                guard let newItem else { return }
+                Task { await uploadAvatar(newItem) }
+            }
             .confirmationDialog("选择外观", isPresented: $showThemePicker, titleVisibility: .visible) {
                 ForEach(ThemeMode.allCases) { m in
                     Button(m.label) { theme.mode = m }
@@ -40,13 +47,43 @@ struct ProfileView: View {
 
     private var headerCard: some View {
         HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(
-                    LinearGradient(colors: [.brandGreen, .brandBlue], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                Text("🐟").font(.system(size: 30))
+            PhotosPicker(selection: $avatarPickerItem, matching: .images) {
+                ZStack {
+                    Circle().fill(
+                        LinearGradient(colors: [.brandGreen, .brandBlue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    if let avatar = user?.avatar, let url = URL(string: avatar) {
+                        AsyncImage(url: url) { phase in
+                            if let image = phase.image {
+                                image.resizable().scaledToFill()
+                            } else {
+                                Text("🐟").font(.system(size: 30))
+                            }
+                        }
+                        .frame(width: 64, height: 64)
+                        .clipShape(Circle())
+                    } else {
+                        Text("🐟").font(.system(size: 30))
+                    }
+                    // 编辑角标
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.white)
+                                .frame(width: 22, height: 22)
+                                .background(Circle().fill(Color.black.opacity(0.55)))
+                        }
+                    }
+                    .frame(width: 64, height: 64)
+                    if avatarUploading {
+                        ProgressView().tint(.white)
+                    }
+                }
+                .frame(width: 64, height: 64)
             }
-            .frame(width: 64, height: 64)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(user?.nickname ?? "未命名").font(.title3.bold())
@@ -122,6 +159,20 @@ struct ProfileView: View {
         }
         .padding(.vertical, 4)
         .cardStyle()
+    }
+
+    private func uploadAvatar(_ item: PhotosPickerItem) async {
+        avatarUploading = true
+        defer { avatarUploading = false }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let image = UIImage(data: data),
+              let jpg = image.jpegData(compressionQuality: 0.75) else { return }
+        do {
+            let updated: User = try await APIClient.shared.upload(User.self, path: "/user/avatar", imageData: jpg)
+            app.user = updated
+        } catch {
+            // 静默
+        }
     }
 
     private var profileSummary: String {
