@@ -96,10 +96,24 @@ struct FoodLibraryView: View {
 
     private func foodRow(_ food: Food) -> some View {
         HStack(spacing: 12) {
-            Text(food.emoji ?? FoodEmoji.forFood(food.name))
-                .font(.title3)
-                .frame(width: 42, height: 42)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Color.weakFill))
+            Group {
+                if let urlStr = food.imageUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let image = phase.image {
+                            image.resizable().scaledToFill()
+                        } else {
+                            Text(food.emoji ?? FoodEmoji.forFood(food.name)).font(.title3)
+                        }
+                    }
+                    .frame(width: 46, height: 46)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                } else {
+                    Text(food.emoji ?? FoodEmoji.forFood(food.name))
+                        .font(.title3)
+                        .frame(width: 46, height: 46)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.weakFill))
+                }
+            }
             VStack(alignment: .leading, spacing: 3) {
                 Text(food.name).font(.subheadline.bold())
                 Text("蛋白 \(food.proteinPer100g ?? 0)g · 碳水 \(food.carbsPer100g ?? 0)g · 脂肪 \(food.fatPer100g ?? 0)g")
