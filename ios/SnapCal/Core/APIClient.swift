@@ -38,8 +38,8 @@ final class APIClient {
 
     // MARK: - 请求方法
 
-    func get<T: Codable>(_ type: T.Type, path: String) async throws -> T {
-        try await request(path: path, method: "GET")
+    func get<T: Codable>(_ type: T.Type, path: String, query: [String: String] = [:]) async throws -> T {
+        try await request(path: path, method: "GET", query: query)
     }
 
     func post<T: Codable>(path: String, body: [String: String]) async throws -> T {
@@ -50,8 +50,40 @@ final class APIClient {
         try await request(path: path, method: "POST", body: encode(body))
     }
 
+    /// POST 但后端 data 为 null (只校验 code)
+    func postVoid(path: String, body: some Encodable) async throws {
+        var req = URLRequest(url: Self.baseURL.appendingPathComponent(path))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainStore.token {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = encode(body)
+        let (data, _) = try await session.data(for: req)
+        if let result = try? JSONDecoder().decode(ApiResult<EmptyPayload>.self, from: data) {
+            guard result.code == 200 else {
+                throw APIError.http(result.code, result.message)
+            }
+        }
+    }
+
     func put<T: Codable>(path: String, body: some Encodable) async throws -> T {
         try await request(path: path, method: "PUT", body: encode(body))
+    }
+
+    /// DELETE (后端返回 data:null, 只校验 code)
+    func delete(path: String) async throws {
+        var req = URLRequest(url: Self.baseURL.appendingPathComponent(path))
+        req.httpMethod = "DELETE"
+        if let token = KeychainStore.token {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await session.data(for: req)
+        if let result = try? JSONDecoder().decode(ApiResult<EmptyPayload>.self, from: data) {
+            guard result.code == 200 else {
+                throw APIError.http(result.code, result.message)
+            }
+        }
     }
 
     /// multipart 上传 (图片识别)
@@ -85,8 +117,16 @@ final class APIClient {
 
     // MARK: - 核心
 
-    private func request<T: Codable>(path: String, method: String, body: Data? = nil) async throws -> T {
-        var req = URLRequest(url: Self.baseURL.appendingPathComponent(path))
+    private func request<T: Codable>(path: String, method: String, query: [String: String] = [:], body: Data? = nil) async throws -> T {
+        // 正确拼接 query (避免 ? 被转义)
+        var components = URLComponents(
+            url: Self.baseURL.appendingPathComponent(path),
+            resolvingAgainstBaseURL: false
+        )!
+        if !query.isEmpty {
+            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        var req = URLRequest(url: components.url!)
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = KeychainStore.token {

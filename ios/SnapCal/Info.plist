@@ -27,13 +27,14 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>SnapCal 需要使用相机拍摄餐盘照片以识别食物热量</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>SnapCal 会将记录的膳食营养数据写入 Apple 健康</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>SnapCal 会读取步数和活动消耗用于热量统计</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SnapCal 需要访问相册以导入餐盘照片</string>
 	<key>UILaunchScreen</key>
-	<dict>
-		<key>UIColorName</key>
-		<string></string>
-	</dict>
+	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

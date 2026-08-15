@@ -3,8 +3,10 @@ import SwiftUI
 /// 我的页: 个人资料 + 目标进度 + 设置 (照原型⑥)
 struct ProfileView: View {
     @EnvironmentObject private var app: AppModel
+    @EnvironmentObject private var theme: ThemeManager
     @State private var showEdit = false
     @State private var showLogout = false
+    @State private var showThemePicker = false
 
     private var user: User? { app.user }
 
@@ -26,6 +28,12 @@ struct ProfileView: View {
             }
             .confirmationDialog("退出登录?", isPresented: $showLogout, titleVisibility: .visible) {
                 Button("退出", role: .destructive) { app.logout() }
+            }
+            .confirmationDialog("选择外观", isPresented: $showThemePicker, titleVisibility: .visible) {
+                ForEach(ThemeMode.allCases) { m in
+                    Button(m.label) { theme.mode = m }
+                }
+                Button("取消", role: .cancel) {}
             }
         }
     }
@@ -72,7 +80,7 @@ struct ProfileView: View {
                 let progress = min(max((start - current) / max(start - goal, 0.01), 0), 1)
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.1))
+                        Capsule().fill(.dividerLine)
                         Capsule().fill(
                             LinearGradient(colors: [.brandBlue, .brandGreen], startPoint: .leading, endPoint: .trailing)
                         )
@@ -88,8 +96,8 @@ struct ProfileView: View {
             }
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 16).fill(Color(red: 0.12, green: 0.23, blue: 0.37)))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color(hex: 0x2B4A73)))
+        .background(RoundedRectangle(cornerRadius: 16).fill(Color.cardBG))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.dividerLine))
     }
 
     private func goalNum(value: String, label: String, color: Color = .brandGreen) -> some View {
@@ -103,11 +111,13 @@ struct ProfileView: View {
     private var settingsCard: some View {
         VStack(spacing: 0) {
             cell(icon: "👤", title: "个人资料", value: profileSummary) { showEdit = true }
-            Divider().overlay(Color.white.opacity(0.06))
+            Divider().overlay(.weakFill)
+            cell(icon: "🎨", title: "外观", value: theme.mode.label) { showThemePicker = true }
+            Divider().overlay(Color.dividerLine)
             cell(icon: "❤️", title: "健康数据 (Apple 健康)", value: "M4") {}
-            Divider().overlay(Color.white.opacity(0.06))
+            Divider().overlay(.weakFill)
             cell(icon: "💎", title: "SnapCal Pro", value: "M5") {}
-            Divider().overlay(Color.white.opacity(0.06))
+            Divider().overlay(.weakFill)
             cell(icon: "🚪", title: "退出登录", value: "", destructive: true) { showLogout = true }
         }
         .padding(.vertical, 4)
@@ -125,7 +135,7 @@ struct ProfileView: View {
             HStack(spacing: 12) {
                 Text(icon).font(.title3)
                     .frame(width: 34, height: 34)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.06)))
+                    .background(RoundedRectangle(cornerRadius: 10).fill(.weakFill))
                 Text(title)
                     .font(.subheadline)
                     .foregroundStyle(destructive ? Color.brandRed : Color.primary)

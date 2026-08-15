@@ -3,11 +3,14 @@ import SwiftUI
 /// 根视图: 启动判断 → 登录页 / 主框架
 struct RootView: View {
     @EnvironmentObject private var app: AppModel
+    @AppStorage("snapcal-onboarded") private var onboarded = false
 
     var body: some View {
         ZStack {
             if !app.booted {
                 LaunchPlaceholder()
+            } else if !onboarded {
+                OnboardingView()
             } else if app.isLoggedIn {
                 MainTabView()
             } else {
@@ -16,6 +19,7 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: app.booted)
         .animation(.easeInOut(duration: 0.25), value: app.isLoggedIn)
+        .animation(.easeInOut(duration: 0.25), value: onboarded)
     }
 }
 
@@ -50,7 +54,7 @@ struct MainTabView: View {
                     .tabItem { Label("我的", systemImage: "person.fill") }.tag(3)
             }
             .tint(.brandGreen)
-            .preferredColorScheme(.dark)
+            
 
             // 中央悬浮拍照按钮 → 识别流程
             HStack {
@@ -73,7 +77,7 @@ struct CameraFab: View {
         Button(action: action) {
             Image(systemName: "camera.fill")
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(Color(hex: 0x04150C))
+                .foregroundStyle(.brandGreen)
                 .frame(width: 58, height: 58)
                 .background(
                     Circle().fill(

@@ -15,6 +15,10 @@ struct RecognizeFlowView: View {
     @State private var engine: String?
     @State private var mealType = "LUNCH"
     @State private var errorText: String?
+    @State private var replacingIndex: Int?
+    @State private var showFoodSearch = false
+    @State private var showCamera = false
+    @State private var scanY: CGFloat = 0
 
     private let api = APIClient.shared
 
@@ -41,12 +45,34 @@ struct RecognizeFlowView: View {
                     Button("关闭") { dismiss() }
                 }
             }
+            .onChange(of: recognizing) { _, running in
+                if running {
+                    scanY = -0.45
+                    withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                        scanY = 0.45
+                    }
+                } else {
+                    scanY = 0
+                }
+            }
             .onChange(of: pickerItem) { _, newItem in
                 guard let newItem else { return }
                 Task { await loadAndRecognize(newItem) }
             }
+            .sheet(isPresented: $showFoodSearch) {
+                if let index = replacingIndex {
+                    FoodSearchSheet { food in
+                        replaceItem(at: index, with: food)
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraCaptureView { image in
+                    Task { await recognize(image) }
+                }
+            }
         }
-        .preferredColorScheme(.dark)
+
     }
 
     // MARK: - 选图区
@@ -64,14 +90,41 @@ struct RecognizeFlowView: View {
                         .font(.headline)
                     if recognizing { ProgressView().tint(.brandGreen) }
                 }
+                // AI 扫描线动效
+                if recognizing {
+                    GeometryReader { geo in
+                        Rectangle()
+                            .fill(LinearGradient(
+                                colors: [.clear, .brandGreen, .clear],
+                                startPoint: .leading, endPoint: .trailing))
+                            .frame(height: 3)
+                            .shadow(color: .brandGreen.opacity(0.7), radius: 10)
+                            .position(x: geo.size.width / 2,
+                                      y: geo.size.height * (scanY + 0.5))
+                    }
+                    .frame(height: 300)
+                }
             }
 
             PhotosPicker(selection: $pickerItem, matching: .images) {
-                Label(recognizing ? "识别中…" : "选择照片 / 拍照", systemImage: "camera.fill")
+                Label(recognizing ? "识别中…" : "从相册选择", systemImage: "photo.on.rectangle")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(Color.brandGreen)
+                    .foregroundStyle(.black)
+                    .clipShape(RoundedRectangle(cornerRadius: 15))
+            }
+            .disabled(recognizing)
+
+            Button {
+                showCamera = true
+            } label: {
+                Label("拍照", systemImage: "camera.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(Color.brandBlue)
                     .foregroundStyle(.black)
                     .clipShape(RoundedRectangle(cornerRadius: 15))
             }
@@ -106,10 +159,10 @@ struct RecognizeFlowView: View {
 
             // 食物列表 + 克重调整
             VStack(spacing: 0) {
-                ForEach($items) { $item in
-                    itemRow($item)
-                    if item.id != items.last?.id {
-                        Divider().overlay(Color.white.opacity(0.06))
+                ForEach(Array($items.enumerated()), id: \.element.id) { index, $item in
+                    itemRow($item, index: index)
+                    if index != items.count - 1 {
+                        Divider().overlay(Color.dividerLine)
                     }
                 }
             }
@@ -143,7 +196,7 @@ struct RecognizeFlowView: View {
         }
     }
 
-    private func itemRow(_ item: Binding<RecognizeResult.FoodItem>) -> some View {
+    private func itemRow(_ item: Binding<RecognizeResult.FoodItem>, index: Int) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.wrappedValue.name).font(.subheadline.bold())
@@ -172,13 +225,22 @@ struct RecognizeFlowView: View {
                     Image(systemName: "plus").frame(width: 30, height: 30)
                 }
             }
-            .background(Color.white.opacity(0.07))
+            .background(.weakFill)
             .clipShape(RoundedRectangle(cornerRadius: 9))
             .foregroundStyle(.brandBlue)
 
             Text("\(item.wrappedValue.kcal)")
                 .font(.subheadline.bold())
                 .frame(width: 52, alignment: .trailing)
+
+            Button {
+                replacingIndex = index
+                showFoodSearch = true
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.caption)
+                    .foregroundStyle(.brandBlue)
+            }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
     }
@@ -198,6 +260,19 @@ struct RecognizeFlowView: View {
         }
     }
 
+    /** 用食物库食物替换识别项: 按每100g营养×当前克重计算 */
+    private func replaceItem(at index: Int, with food: Food) {
+        guard index < items.count else { return }
+        let weight = Double(items[index].weightG) / 100.0
+        items[index].name = food.name
+        items[index].kcal = Int(weight * Double(food.kcalPer100g ?? 0))
+        items[index].proteinG = weight * (food.proteinPer100g ?? 0)
+        items[index].carbsG = weight * (food.carbsPer100g ?? 0)
+        items[index].fatG = weight * (food.fatPer100g ?? 0)
+        items[index].confidence = 1.0
+        replacingIndex = nil
+    }
+
     /** 按克重比例重算热量: newKcal = kcal * newWeight / oldWeight */
     private func recalc(kcal: Int, oldWeight: Int, newWeight: Int) -> Int {
         max(0, Int(Double(kcal) * Double(newWeight) / Double(max(oldWeight, 1))))
@@ -213,18 +288,32 @@ struct RecognizeFlowView: View {
                 return
             }
             selectedImage = image
-            // 压缩到 jpg
-            guard let jpg = image.jpegData(compressionQuality: 0.8) else {
-                errorText = "图片处理失败"
-                return
-            }
-            let r: RecognizeResult = try await api.upload(RecognizeResult.self, path: "/vision/recognize", imageData: jpg)
-            resultImage = r.image
-            items = r.items
-            engine = r.engine
+            try await uploadAndRecognize(image)
         } catch {
             errorText = error.localizedDescription
         }
+    }
+
+    private func recognize(_ image: UIImage) async {
+        recognizing = true
+        defer { recognizing = false }
+        selectedImage = image
+        do {
+            try await uploadAndRecognize(image)
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func uploadAndRecognize(_ image: UIImage) async throws {
+        guard let jpg = image.jpegData(compressionQuality: 0.8) else {
+            errorText = "图片处理失败"
+            return
+        }
+        let r: RecognizeResult = try await api.upload(RecognizeResult.self, path: "/vision/recognize", imageData: jpg)
+        resultImage = r.image
+        items = r.items
+        engine = r.engine
     }
 
     private func saveMeal() async {
@@ -244,6 +333,13 @@ struct RecognizeFlowView: View {
         do {
             let _: Meal = try await api.post(path: "/meal", body: req)
             await app.refreshMe()
+            // 写入 Apple 健康
+            await HealthKitManager.shared.writeMeal(
+                kcal: totalKcal,
+                proteinG: totalProtein,
+                carbsG: totalCarbs,
+                fatG: totalFat,
+                at: Date())
             NotificationCenter.default.post(name: .mealSaved, object: nil)
             dismiss()
         } catch {

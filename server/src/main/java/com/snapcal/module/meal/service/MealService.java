@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -85,12 +86,33 @@ public class MealService {
         Long userId = UserContext.requireUserId();
         LocalDateTime start = date.atStartOfDay();
         LocalDateTime end = date.plusDays(1).atStartOfDay();
+        return queryBetween(userId, start, end);
+    }
 
+    /** 最近 N 天餐次, 按日期字符串(MM-dd)分组 */
+    public Map<String, List<MealVO>> range(int days) {
+        Long userId = UserContext.requireUserId();
+        LocalDate today = LocalDate.now();
+        LocalDateTime start = today.minusDays(days - 1L).atStartOfDay();
+        LocalDateTime end = today.plusDays(1).atStartOfDay();
+
+        Map<String, List<MealVO>> grouped = new java.util.LinkedHashMap<>();
+        for (LocalDate d = today.minusDays(days - 1L); !d.isAfter(today); d = d.plusDays(1)) {
+            grouped.put(d.toString(), new ArrayList<>());
+        }
+        for (MealVO vo : queryBetween(userId, start, end)) {
+            String key = vo.getEatTime() != null ? vo.getEatTime().toLocalDate().toString() : today.toString();
+            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(vo);
+        }
+        return grouped;
+    }
+
+    private List<MealVO> queryBetween(Long userId, LocalDateTime start, LocalDateTime end) {
         List<Meal> meals = mealMapper.selectList(new LambdaQueryWrapper<Meal>()
                 .eq(Meal::getUserId, userId)
                 .ge(Meal::getEatTime, start)
                 .lt(Meal::getEatTime, end)
-                .orderByAsc(Meal::getEatTime));
+                .orderByDesc(Meal::getEatTime));
 
         List<MealVO> result = new ArrayList<>();
         for (Meal meal : meals) {

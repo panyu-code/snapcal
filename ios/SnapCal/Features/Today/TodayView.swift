@@ -5,6 +5,8 @@ struct TodayView: View {
     @EnvironmentObject private var app: AppModel
     @State private var meals: [Meal] = []
     @State private var loading = false
+    @State private var steps = 0
+    @State private var activeEnergy = 0
 
     private var user: User? { app.user }
     private var target: Int { user?.dailyKcalTarget ?? 2200 }
@@ -27,7 +29,10 @@ struct TodayView: View {
             .background(Color.pageBG)
             .navigationTitle("今日概览")
             .navigationBarTitleDisplayMode(.large)
-            .task { await loadMeals() }
+            .task {
+                await loadMeals()
+                await loadHealth()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .mealSaved)) { _ in
                 Task { await loadMeals() }
             }
@@ -57,7 +62,7 @@ struct TodayView: View {
                         desc: list.isEmpty ? "拍一张照片即可" : "已记 \(list.count) 项",
                         kcal: list.isEmpty ? nil : list.reduce(0) { $0 + ($1.totalKcal ?? 0) })
                 if type != "SNACK" {
-                    Divider().overlay(Color.white.opacity(0.06))
+                    Divider().overlay(Color.dividerLine)
                 }
             }
         }
@@ -76,7 +81,7 @@ struct TodayView: View {
         HStack(spacing: 12) {
             Text(emoji).font(.title3)
                 .frame(width: 46, height: 46)
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.05)))
+                .background(RoundedRectangle(cornerRadius: 12).fill(.weakFill))
             VStack(alignment: .leading, spacing: 3) {
                 Text(name).font(.subheadline.bold())
                 Text(desc).font(.caption).foregroundStyle(.secondary)
@@ -99,27 +104,45 @@ struct TodayView: View {
         HStack(spacing: 12) {
             Text("🔥").font(.title2)
             VStack(alignment: .leading, spacing: 3) {
-                Text("已消耗 1,846 kcal").font(.subheadline.bold())
-                Text("步数 8,421 · 运动 32 分钟")
+                Text("已消耗 \(activeEnergy) kcal").font(.subheadline.bold())
+                Text("步数 \(steps) · 来自 Apple 健康")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Text("缺口 \(max(target - eaten, 0))")
+            Text("缺口 \(max(target - eaten + activeEnergy, 0))")
                 .font(.caption.bold()).foregroundStyle(.brandGreen)
         }
         .padding(14)
         .cardStyle()
-        .opacity(0.5) // M4 接 HealthKit 后启用
     }
 
     private func loadMeals() async {
         loading = true
         defer { loading = false }
-        do {
-            meals = try await APIClient.shared.get([Meal].self, path: "/meal/day")
-        } catch {
-            // 静默失败, 保留旧数据
+        // 离线: 先读缓存
+        let key = "meals-\(Self.todayKey)"
+        if meals.isEmpty, let cached: [Meal] = CacheStore.shared.load([Meal].self, key: key) {
+            meals = cached
         }
+        do {
+            let fresh = try await APIClient.shared.get([Meal].self, path: "/meal/day")
+            meals = fresh
+            CacheStore.shared.save(key: key, value: fresh)
+        } catch {
+            // 网络失败, 保留缓存数据
+        }
+    }
+
+    private func loadHealth() async {
+        await HealthKitManager.shared.requestAuthorization()
+        steps = await HealthKitManager.shared.todayStepCount()
+        activeEnergy = await HealthKitManager.shared.todayActiveEnergy()
+    }
+
+    private static var todayKey: String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt.string(from: Date())
     }
 
     private static var todayText: String {
@@ -143,7 +166,7 @@ struct CalorieRing: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.08), lineWidth: 18)
+                .stroke(.weakFill, lineWidth: 18)
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
@@ -188,7 +211,7 @@ struct MacroCards: View {
                         .font(.caption2).foregroundStyle(.secondary)
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
-                            Capsule().fill(Color.white.opacity(0.08))
+                            Capsule().fill(.weakFill)
                             Capsule().fill(color)
                                 .frame(width: max(6, geo.size.width * min(value / Double(max(cap, 1)), 1)))
                         }
@@ -209,7 +232,7 @@ struct CardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .background(RoundedRectangle(cornerRadius: 16).fill(Color.cardBG))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(0.06)))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.dividerLine))
     }
 }
 

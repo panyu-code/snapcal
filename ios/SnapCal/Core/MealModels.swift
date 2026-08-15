@@ -9,7 +9,7 @@ struct RecognizeResult: Codable {
 
     struct FoodItem: Codable, Identifiable {
         let id = UUID()
-        let name: String
+        var name: String
         var weightG: Int
         var kcal: Int
         var proteinG: Double?
@@ -98,3 +98,6 @@ extension Notification.Name {
     /// 餐次保存成功, 今日页收到后刷新
     static let mealSaved = Notification.Name("SnapCalMealSaved")
 }
+
+/// 空 payload (DELETE 等接口 data 为 null)
+struct EmptyPayload: Codable {}

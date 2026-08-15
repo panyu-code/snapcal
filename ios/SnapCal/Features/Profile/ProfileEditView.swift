@@ -87,7 +87,7 @@ struct ProfileEditView: View {
             }
             .onAppear { loadCurrent() }
         }
-        .preferredColorScheme(.dark)
+        
     }
 
     private func loadCurrent() {

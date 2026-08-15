@@ -30,6 +30,14 @@ public class MealController {
         return Result.success(mealService.day(date != null ? date : LocalDate.now()));
     }
 
+    /** 最近 N 天餐次 (按天分组) */
+    @GetMapping("/range")
+    public Result<java.util.Map<String, List<MealVO>>> range(
+            @RequestParam(defaultValue = "7") int days) {
+        int bounded = Math.min(Math.max(days, 1), 90);
+        return Result.success(mealService.range(bounded));
+    }
+
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         mealService.delete(id);
