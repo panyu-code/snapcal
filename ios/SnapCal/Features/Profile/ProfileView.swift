@@ -10,6 +10,8 @@ struct ProfileView: View {
     @State private var showThemePicker = false
     @State private var avatarPickerItem: PhotosPickerItem?
     @State private var avatarUploading = false
+    @State private var avatarDraft: UIImage?
+    @State private var showAvatarEditor = false
 
     private var user: User? { app.user }
 
@@ -34,7 +36,20 @@ struct ProfileView: View {
             }
             .onChange(of: avatarPickerItem) { _, newItem in
                 guard let newItem else { return }
-                Task { await uploadAvatar(newItem) }
+                Task {
+                    if let data = try? await newItem.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        avatarDraft = image
+                        showAvatarEditor = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showAvatarEditor) {
+                if let draft = avatarDraft {
+                    AvatarEditorView(image: draft) { cropped in
+                        Task { await uploadAvatarImage(cropped) }
+                    }
+                }
             }
             .confirmationDialog("选择外观", isPresented: $showThemePicker, titleVisibility: .visible) {
                 ForEach(ThemeMode.allCases) { m in
@@ -161,12 +176,10 @@ struct ProfileView: View {
         .cardStyle()
     }
 
-    private func uploadAvatar(_ item: PhotosPickerItem) async {
+    private func uploadAvatarImage(_ image: UIImage) async {
         avatarUploading = true
         defer { avatarUploading = false }
-        guard let data = try? await item.loadTransferable(type: Data.self),
-              let image = UIImage(data: data),
-              let jpg = image.jpegData(compressionQuality: 0.75) else { return }
+        guard let jpg = image.jpegData(compressionQuality: 0.75) else { return }
         do {
             let updated: User = try await APIClient.shared.upload(User.self, path: "/user/avatar", imageData: jpg)
             app.user = updated
