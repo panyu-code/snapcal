@@ -34,41 +34,36 @@ private struct LaunchPlaceholder: View {
 /// 五 Tab 主框架 (照原型①④⑤⑥ + 中央拍照入口)
 struct MainTabView: View {
     @EnvironmentObject private var app: AppModel
-    @State private var tab: Tab = .today
-
-    enum Tab: Hashable { case today, history, trends, profile }
+    @State private var tab = 0   // 0今日 1记录 2趋势 3我的
+    @State private var showRecognize = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $tab) {
                 TodayView()
-                    .tabItem { Label("今日", systemImage: "house.fill") }.tag(Tab.today)
+                    .tabItem { Label("今日", systemImage: "house.fill") }.tag(0)
                 HistoryView()
-                    .tabItem { Label("记录", systemImage: "book.fill") }.tag(Tab.history)
-                Color.clear
-                    .tabItem { Label("", systemImage: "camera.fill") }.tag(Tab.self.cameraDummy)
+                    .tabItem { Label("记录", systemImage: "book.fill") }.tag(1)
                 TrendsView()
-                    .tabItem { Label("趋势", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.trends)
+                    .tabItem { Label("趋势", systemImage: "chart.line.uptrend.xyaxis") }.tag(2)
                 ProfileView()
-                    .tabItem { Label("我的", systemImage: "person.fill") }.tag(Tab.profile)
+                    .tabItem { Label("我的", systemImage: "person.fill") }.tag(3)
             }
             .tint(.brandGreen)
             .preferredColorScheme(.dark)
 
-            // 中央悬浮拍照按钮 (M2 实现相机)
+            // 中央悬浮拍照按钮 → 识别流程
             HStack {
                 Spacer()
-                CameraFab { print("M2: 打开相机") }
+                CameraFab { showRecognize = true }
                     .padding(.trailing, 24)
                     .padding(.bottom, 66)
             }
-            .allowsHitTesting(true)
+        }
+        .sheet(isPresented: $showRecognize) {
+            RecognizeFlowView().environmentObject(app)
         }
     }
-}
-
-private extension Tab {
-    static let cameraDummy = Tab.history
 }
 
 struct CameraFab: View {

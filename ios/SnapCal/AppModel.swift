@@ -41,13 +41,9 @@ final class AppModel: ObservableObject {
         struct LoginResp: Codable { let token: String; let user: User }
         var body: [String: String] = ["identityToken": identityToken]
         if let nickname { body["nickname"] = nickname }
-        let resp: LoginResp = try await await2 { try await api.post(path: "/auth/apple", body: body) }
+        let resp: LoginResp = try await api.post(path: "/auth/apple", body: body)
         KeychainStore.token = resp.token
         user = resp.user
-    }
-
-    private func await2<T>(_ block: @escaping () async throws -> T) async throws -> T {
-        try await block()
     }
 
     func logout() {

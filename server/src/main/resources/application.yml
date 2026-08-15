@@ -38,6 +38,20 @@ snapcal:
     audience: ${APPLE_BUNDLE_ID:com.yupan.snapcal}
   # 开发模式: 允许 /auth/dev-login (上架前关闭)
   dev-mode: ${DEV_MODE:true}
+  # 对象存储 (复用 dataviz 的 RustFS 实例)
+  oss:
+    endpoint: ${OSS_ENDPOINT:http://dataviz-rustfs:9000}
+    external-endpoint: ${OSS_EXTERNAL_ENDPOINT:http://myblog.wiki:9000}
+    access-key: ${OSS_ACCESS_KEY:dataviz}
+    secret-key: ${OSS_SECRET_KEY:YuPan95270.}
+    bucket: ${OSS_BUCKET:snapcal}
+    region: us-east-1
+  # 视觉识别 AI (mock 无key可跑通链路; glm/qwen/siliconflow 接真实识别)
+  vision:
+    provider: ${VISION_PROVIDER:mock}
+    api-key: ${VISION_API_KEY:}
+    model: ${VISION_MODEL:glm-4v-flash}
+    api-url: ${VISION_API_URL:https://open.bigmodel.cn/api/paas/v4/chat/completions}
 
 logging:
   level:

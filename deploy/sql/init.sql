@@ -61,10 +61,10 @@ CREATE TABLE IF NOT EXISTS `sc_food` (
   `id`           BIGINT PRIMARY KEY AUTO_INCREMENT,
   `name`         VARCHAR(100) NOT NULL,
   `category`     VARCHAR(30)  DEFAULT NULL,
-  `kcal_per_100g` INT         DEFAULT 0,
-  `protein_per_100g` DOUBLE   DEFAULT 0,
-  `carbs_per_100g` DOUBLE    DEFAULT 0,
-  `fat_per_100g` DOUBLE       DEFAULT 0,
+  `kcal_per100g` INT         DEFAULT 0,
+  `protein_per100g` DOUBLE   DEFAULT 0,
+  `carbs_per100g` DOUBLE    DEFAULT 0,
+  `fat_per100g` DOUBLE       DEFAULT 0,
   INDEX `idx_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='食物库';
 
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS `sc_weight` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='体重记录';
 
 -- 常用食物种子数据 (示例, M2 扩充完整库)
-INSERT IGNORE INTO `sc_food` (`name`, `category`, `kcal_per_100g`, `protein_per_100g`, `carbs_per_100g`, `fat_per_100g`) VALUES
+INSERT IGNORE INTO `sc_food` (`name`, `category`, `kcal_per100g`, `protein_per100g`, `carbs_per100g`, `fat_per100g`) VALUES
 ('米饭', '主食', 116, 2.6, 25.9, 0.3),
 ('馒头', '主食', 223, 7.0, 47.0, 1.1),
 ('全麦面包', '主食', 246, 9.0, 45.0, 3.4),

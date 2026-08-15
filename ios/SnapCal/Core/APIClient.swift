@@ -46,8 +46,41 @@ final class APIClient {
         try await request(path: path, method: "POST", body: encode(body))
     }
 
+    func post<T: Codable>(path: String, body: some Encodable) async throws -> T {
+        try await request(path: path, method: "POST", body: encode(body))
+    }
+
     func put<T: Codable>(path: String, body: some Encodable) async throws -> T {
         try await request(path: path, method: "PUT", body: encode(body))
+    }
+
+    /// multipart 上传 (图片识别)
+    func upload<T: Codable>(_ type: T.Type, path: String, imageData: Data, fieldName: String = "file",
+                            fileName: String = "meal.jpg") async throws -> T {
+        let boundary = "SnapCalBoundary\(UUID().uuidString)"
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        var req = URLRequest(url: Self.baseURL.appendingPathComponent(path))
+        req.httpMethod = "POST"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainStore.token {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        req.httpBody = body
+
+        let (data, response) = try await session.data(for: req)
+        guard let result = try? JSONDecoder().decode(ApiResult<T>.self, from: data) else {
+            throw APIError.decoding("上传响应解析失败")
+        }
+        guard result.code == 200, let payload = result.data else {
+            throw APIError.http(result.code, result.message)
+        }
+        return payload
     }
 
     // MARK: - 核心

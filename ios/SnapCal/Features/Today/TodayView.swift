@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// 今日首页: 卡路里圆环 + 三大营养素 + 餐次占位 (照原型①)
+/// 今日首页: 卡路里圆环 + 三大营养素 + 餐次列表 (照原型①)
 struct TodayView: View {
     @EnvironmentObject private var app: AppModel
+    @State private var meals: [Meal] = []
+    @State private var loading = false
 
     private var user: User? { app.user }
     private var target: Int { user?.dailyKcalTarget ?? 2200 }
-    private var eaten: Int { 354 }   // M3 接真实数据
+    private var eaten: Int { meals.reduce(0) { $0 + ($1.totalKcal ?? 0) } }
 
     var body: some View {
         NavigationStack {
@@ -15,15 +17,17 @@ struct TodayView: View {
                     header
                     CalorieRing(eaten: eaten, target: target)
                     MacroCards(eaten: eaten, target: target)
-                    mealCard
+                    mealList
                     burnCard
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)
             }
+            .refreshable { await loadMeals() }
             .background(Color.pageBG)
             .navigationTitle("今日概览")
             .navigationBarTitleDisplayMode(.large)
+            .task { await loadMeals() }
         }
     }
 
@@ -42,17 +46,28 @@ struct TodayView: View {
         }
     }
 
-    private var mealCard: some View {
+    private var mealList: some View {
         VStack(spacing: 0) {
-            mealRow(emoji: "🥣", name: "早餐 · 待记录", desc: "拍一张照片即可", kcal: nil)
-            Divider().overlay(Color.white.opacity(0.06))
-            mealRow(emoji: "🍽️", name: "午餐 · 待记录", desc: "拍一张照片即可", kcal: nil)
-            Divider().overlay(Color.white.opacity(0.06))
-            mealRow(emoji: "🍜", name: "晚餐 · 待记录", desc: "拍一张照片即可", kcal: nil)
+            ForEach(Self.mealSlots, id: \.0) { type, emoji, name in
+                let list = meals.filter { $0.mealType == type }
+                mealRow(emoji: emoji, name: name,
+                        desc: list.isEmpty ? "拍一张照片即可" : "已记 \(list.count) 项",
+                        kcal: list.isEmpty ? nil : list.reduce(0) { $0 + ($1.totalKcal ?? 0) })
+                if type != "SNACK" {
+                    Divider().overlay(Color.white.opacity(0.06))
+                }
+            }
         }
         .padding(.vertical, 6)
         .cardStyle()
     }
+
+    private static let mealSlots: [(String, String, String)] = [
+        ("BREAKFAST", "🥣", "早餐"),
+        ("LUNCH", "🍽️", "午餐"),
+        ("DINNER", "🍜", "晚餐"),
+        ("SNACK", "🍎", "加餐")
+    ]
 
     private func mealRow(emoji: String, name: String, desc: String, kcal: Int?) -> some View {
         HStack(spacing: 12) {
@@ -86,12 +101,22 @@ struct TodayView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Text("缺口 1,492")
+            Text("缺口 \(max(target - eaten, 0))")
                 .font(.caption.bold()).foregroundStyle(.brandGreen)
         }
         .padding(14)
         .cardStyle()
         .opacity(0.5) // M4 接 HealthKit 后启用
+    }
+
+    private func loadMeals() async {
+        loading = true
+        defer { loading = false }
+        do {
+            meals = try await APIClient.shared.get([Meal].self, path: "/meal/day")
+        } catch {
+            // 静默失败, 保留旧数据
+        }
     }
 
     private static var todayText: String {
@@ -143,10 +168,11 @@ struct MacroCards: View {
 
     private var macros: [(String, Double, Int, Color)] {
         let ratio = Double(eaten) / Double(max(target, 1))
+        let t = Double(target)
         return [
-            ("蛋白质", 0.25 * target * ratio, Int(0.25 * Double(target)), .brandBlue),
-            ("碳水", 0.50 * target * ratio, Int(0.50 * Double(target)), .brandOrange),
-            ("脂肪", 0.25 * target * ratio * 0.45, Int(0.27 * Double(target)), .brandRed)
+            ("蛋白质", 0.25 * t * ratio, Int(0.25 * t), .brandBlue),
+            ("碳水", 0.50 * t * ratio, Int(0.50 * t), .brandOrange),
+            ("脂肪", 0.25 * t * ratio * 0.45, Int(0.27 * t), .brandRed)
         ]
     }
 
