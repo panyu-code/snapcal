@@ -19,6 +19,9 @@ public class Food implements Serializable {
     /** 食物专属 emoji (新增食物时 INSERT 带上即可, 无需改代码) */
     private String emoji;
 
+    /** 食物高清图片 URL (RustFS) */
+    private String imageUrl;
+
     private String category;
 
     private Integer kcalPer100g;
