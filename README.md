@@ -270,6 +270,9 @@ CREATE TABLE sc_weight (
 | GET | `/api/stats/weight?days=30` | 体重序列 |
 | POST | `/api/weight` | 记录体重 |
 | GET | `/api/food/search?kw=` | 食物库搜索（修正用） |
+| GET | `/api/food/list` | 食物库分页浏览（名称/类别筛选） |
+| GET | `/api/food/categories` | 食物库分类列表 |
+| POST | `/api/user/avatar` | 上传头像 |
 
 `recognize` 响应示例：
 ```json
@@ -343,8 +346,10 @@ SnapCal/
 ### M5 — 打磨与 Widget 🟡 部分完成
 - [x] 识别扫描线动效 + 空态 + **首次启动引导页**（3 页滑动）
 - [x] **主题系统**（深色/浅色/跟随系统，我的页切换）
-- [x] **头像编辑**（选图 → 缩放预览 → 保存，上传 RustFS）
-- [x] App 图标（仪表盘风格，多版设计可选）
+- [x] **头像编辑**（选图 → 缩放预览 → 保存按钮，上传 RustFS）
+- [x] **食物库浏览**（我的页入口：搜索 + 19 分类筛选 + 分页列表 + 营养参数）
+- [x] **食物 emoji 精准匹配**（622 种入库，加新食物 INSERT 带 emoji 即可，无需改代码）
+- [x] App 图标（仪表盘风格 V10 增强版，多版设计可选）
 - [x] Widget 代码已完成（今日剩余热量圆环，小/中尺寸）
 - [ ] Widget 上线（需付费开发者账号的 App Group 权限，当前从免费签名工程中移除，代码保留在 `SnapCalWidget/`）
 - [ ] 免费 3 次/日限制 + IAP 订阅（暂缓）
