@@ -11,6 +11,7 @@ struct ProfileView: View {
     @State private var avatarPickerItem: PhotosPickerItem?
     @State private var avatarUploading = false
     @State private var avatarDraft: AvatarDraft?
+    @State private var showFoodLibrary = false
 
     private var user: User? { app.user }
 
@@ -41,6 +42,9 @@ struct ProfileView: View {
                         avatarDraft = AvatarDraft(image: image)
                     }
                 }
+            }
+            .sheet(isPresented: $showFoodLibrary) {
+                FoodLibraryView()
             }
             .sheet(item: $avatarDraft) { draft in
                 AvatarEditorView(image: draft.image) { cropped in
