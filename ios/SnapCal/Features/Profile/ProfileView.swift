@@ -10,8 +10,7 @@ struct ProfileView: View {
     @State private var showThemePicker = false
     @State private var avatarPickerItem: PhotosPickerItem?
     @State private var avatarUploading = false
-    @State private var avatarDraft: UIImage?
-    @State private var showAvatarEditor = false
+    @State private var avatarDraft: AvatarDraft?
 
     private var user: User? { app.user }
 
@@ -39,16 +38,13 @@ struct ProfileView: View {
                 Task {
                     if let data = try? await newItem.loadTransferable(type: Data.self),
                        let image = UIImage(data: data) {
-                        avatarDraft = image
-                        showAvatarEditor = true
+                        avatarDraft = AvatarDraft(image: image)
                     }
                 }
             }
-            .sheet(isPresented: $showAvatarEditor) {
-                if let draft = avatarDraft {
-                    AvatarEditorView(image: draft) { cropped in
-                        Task { await uploadAvatarImage(cropped) }
-                    }
+            .sheet(item: $avatarDraft) { draft in
+                AvatarEditorView(image: draft.image) { cropped in
+                    Task { await uploadAvatarImage(cropped) }
                 }
             }
             .confirmationDialog("选择外观", isPresented: $showThemePicker, titleVisibility: .visible) {
@@ -211,4 +207,10 @@ struct ProfileView: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+/// 头像草稿 (sheet(item:) 需要 Identifiable)
+struct AvatarDraft: Identifiable {
+    let id = UUID()
+    let image: UIImage
 }
