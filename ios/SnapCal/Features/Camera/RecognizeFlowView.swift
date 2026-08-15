@@ -81,13 +81,24 @@ struct RecognizeFlowView: View {
         VStack(spacing: 24) {
             Spacer(minLength: 60)
             ZStack {
-                RoundedRectangle(cornerRadius: 24)
-                    .strokeBorder(Color.brandGreen.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
-                    .frame(height: 300)
+                // 背景: 已选图时显示图片, 否则取景框
+                if let selectedImage {
+                    Image(uiImage: selectedImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 300)
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
+                        .overlay(Color.black.opacity(recognizing ? 0.45 : 0.15))
+                } else {
+                    RoundedRectangle(cornerRadius: 24)
+                        .strokeBorder(Color.brandGreen.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+                        .frame(height: 300)
+                }
                 VStack(spacing: 14) {
-                    Text("🍽️").font(.system(size: 64))
-                    Text(recognizing ? "AI 正在识别…" : "对准餐盘拍一张")
+                    Text(selectedImage == nil ? "🍽️" : "").font(.system(size: 64))
+                    Text(recognizing ? "AI 正在识别…" : (selectedImage != nil ? "点击下方按钮开始识别" : "对准餐盘拍一张"))
                         .font(.headline)
+                        .foregroundStyle(selectedImage != nil ? .white : .primary)
                     if recognizing { ProgressView().tint(.brandGreen) }
                 }
                 // AI 扫描线动效
@@ -107,7 +118,7 @@ struct RecognizeFlowView: View {
             }
 
             PhotosPicker(selection: $pickerItem, matching: .images) {
-                Label(recognizing ? "识别中…" : "从相册选择", systemImage: "photo.on.rectangle")
+                Label(recognizing ? "识别中…" : (selectedImage != nil ? "重新选图" : "从相册选择"), systemImage: "photo.on.rectangle")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
@@ -129,6 +140,24 @@ struct RecognizeFlowView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 15))
             }
             .disabled(recognizing)
+
+            if selectedImage != nil && !recognizing && items.isEmpty {
+                Button {
+                    Task {
+                        if let image = selectedImage {
+                            await recognize(image)
+                        }
+                    }
+                } label: {
+                    Label("开始 AI 识别", systemImage: "sparkles")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(Color.brandOrange)
+                        .foregroundStyle(.black)
+                        .clipShape(RoundedRectangle(cornerRadius: 15))
+                }
+            }
             Spacer(minLength: 40)
         }
     }
@@ -240,6 +269,14 @@ struct RecognizeFlowView: View {
                 Image(systemName: "arrow.triangle.2.circlepath")
                     .font(.caption)
                     .foregroundStyle(.brandBlue)
+            }
+
+            Button {
+                items.remove(at: index)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.caption)
+                    .foregroundStyle(.brandRed)
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 12)

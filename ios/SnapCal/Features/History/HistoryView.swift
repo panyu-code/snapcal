@@ -4,6 +4,7 @@ import SwiftUI
 struct HistoryView: View {
     @State private var days: [String: [Meal]] = [:]
     @State private var loading = false
+    @State private var selectedMeal: Meal?
 
     var body: some View {
         NavigationStack {
@@ -21,6 +22,11 @@ struct HistoryView: View {
             .task { await load() }
             .onReceive(NotificationCenter.default.publisher(for: .mealSaved)) { _ in
                 Task { await load() }
+            }
+            .sheet(item: $selectedMeal) { meal in
+                MealDetailView(meal: meal) {
+                    Task { await delete(meal) }
+                }
             }
             .overlay {
                 if !loading && days.values.allSatisfy({ $0.isEmpty }) {
@@ -50,6 +56,7 @@ struct HistoryView: View {
 
             ForEach(meals) { meal in
                 mealCard(meal)
+                    .onTapGesture { selectedMeal = meal }
             }
         }
     }
@@ -79,14 +86,10 @@ struct HistoryView: View {
                 Text("\(meal.totalKcal ?? 0)").font(.headline)
                 Text("kcal").font(.caption2).foregroundStyle(.secondary)
             }
-            // 删除按钮
-            Button {
-                Task { await delete(meal) }
-            } label: {
-                Image(systemName: "trash")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
+            // 详情入口提示
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .padding(12)
         .cardStyle()
