@@ -32,13 +32,23 @@ struct ProfileEditView: View {
                     HStack {
                         Text("身高")
                         Spacer()
-                        Text("\(Int(heightCm)) cm").foregroundStyle(.secondary)
+                        TextField("170", value: $heightCm, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 90)
+                            .textFieldStyle(.roundedBorder)
+                        Text("cm").foregroundStyle(.secondary)
                     }
                     Slider(value: $heightCm, in: 120...220, step: 1)
                     HStack {
                         Text("当前体重")
                         Spacer()
-                        Text(String(format: "%.1f kg", currentWeight)).foregroundStyle(.secondary)
+                        TextField("65.0", value: $currentWeight, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 90)
+                            .textFieldStyle(.roundedBorder)
+                        Text("kg").foregroundStyle(.secondary)
                     }
                     Slider(value: $currentWeight, in: 30...200, step: 0.1)
                 }
@@ -53,7 +63,12 @@ struct ProfileEditView: View {
                     HStack {
                         Text("目标体重")
                         Spacer()
-                        Text(String(format: "%.1f kg", goalWeight)).foregroundStyle(.secondary)
+                        TextField("60.0", value: $goalWeight, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 90)
+                            .textFieldStyle(.roundedBorder)
+                        Text("kg").foregroundStyle(.secondary)
                     }
                     Slider(value: $goalWeight, in: 30...200, step: 0.1)
                     Picker("速度", selection: $pace) {
@@ -117,8 +132,9 @@ struct ProfileEditView: View {
         )
         do {
             let _: User = try await APIClient.shared.put(path: "/user/profile", body: req)
-            await app.refreshMe()
             dismiss()
+            // 后台刷新用户信息, 不阻塞保存流程
+            Task { await app.refreshMe() }
         } catch {
             errorText = error.localizedDescription
         }
