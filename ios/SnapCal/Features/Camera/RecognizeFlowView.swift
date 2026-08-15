@@ -154,18 +154,20 @@ struct RecognizeFlowView: View {
             // 克重步进器
             HStack(spacing: 0) {
                 Button {
-                    let newWeight = max(10, item.wrappedValue.weightG - 10)
+                    let old = item.wrappedValue.weightG
+                    let newWeight = max(10, old - 10)
                     item.wrappedValue.weightG = newWeight
-                    item.wrappedValue.kcal = recalc(item.wrappedValue)
+                    item.wrappedValue.kcal = recalc(kcal: item.wrappedValue.kcal, oldWeight: old, newWeight: newWeight)
                 } label: {
                     Image(systemName: "minus").frame(width: 30, height: 30)
                 }
                 Text("\(item.wrappedValue.weightG)g")
                     .font(.subheadline.bold()).frame(minWidth: 56)
                 Button {
-                    let newWeight = item.wrappedValue.weightG + 10
+                    let old = item.wrappedValue.weightG
+                    let newWeight = old + 10
                     item.wrappedValue.weightG = newWeight
-                    item.wrappedValue.kcal = recalc(item.wrappedValue)
+                    item.wrappedValue.kcal = recalc(kcal: item.wrappedValue.kcal, oldWeight: old, newWeight: newWeight)
                 } label: {
                     Image(systemName: "plus").frame(width: 30, height: 30)
                 }
@@ -196,10 +198,9 @@ struct RecognizeFlowView: View {
         }
     }
 
-    /** 按克重比例重算热量 */
-    private func recalc(_ item: RecognizeResult.FoodItem) -> Int {
-        let ratio = Double(item.weightG) / 100.0
-        return Int(ratio * Double(item.kcal) / max(Double(item.weightG), 1) * 100)
+    /** 按克重比例重算热量: newKcal = kcal * newWeight / oldWeight */
+    private func recalc(kcal: Int, oldWeight: Int, newWeight: Int) -> Int {
+        max(0, Int(Double(kcal) * Double(newWeight) / Double(max(oldWeight, 1))))
     }
 
     private func loadAndRecognize(_ item: PhotosPickerItem) async {
@@ -243,6 +244,7 @@ struct RecognizeFlowView: View {
         do {
             let _: Meal = try await api.post(path: "/meal", body: req)
             await app.refreshMe()
+            NotificationCenter.default.post(name: .mealSaved, object: nil)
             dismiss()
         } catch {
             errorText = error.localizedDescription

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * 登录拦截器: 校验 Authorization (支持 Bearer 前缀), 通过后写入 UserContext
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class AuthInterceptor implements HandlerInterceptor {
@@ -31,6 +33,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         }
         Long userId = StringUtils.hasText(auth) ? jwtUtil.verify(auth) : null;
         if (userId == null) {
+            log.warn("401 未授权: {} {} | Authorization: {}",
+                    request.getMethod(), request.getRequestURI(),
+                    StringUtils.hasText(auth) ? auth.substring(0, Math.min(12, auth.length())) + "..." : "(空)");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());

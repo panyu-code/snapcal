@@ -93,3 +93,8 @@ struct Food: Codable, Identifiable {
     var carbsPer100g: Double?
     var fatPer100g: Double?
 }
+
+extension Notification.Name {
+    /// 餐次保存成功, 今日页收到后刷新
+    static let mealSaved = Notification.Name("SnapCalMealSaved")
+}

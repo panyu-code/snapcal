@@ -28,6 +28,9 @@ struct TodayView: View {
             .navigationTitle("今日概览")
             .navigationBarTitleDisplayMode(.large)
             .task { await loadMeals() }
+            .onReceive(NotificationCenter.default.publisher(for: .mealSaved)) { _ in
+                Task { await loadMeals() }
+            }
         }
     }
 
