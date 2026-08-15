@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+# Xcode
+ios/SnapCal.xcodeproj
+ios/DerivedData/
+*.xcuserstate
+xcuserdata/
+# Java
+server/target/
+*.class
+# 本地配置
+.env

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnapCal 卡路里相机 · 高保真原型</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b26; --card:#1d2433; --card2:#232c3f;
+    --green:#34d399; --blue:#60a5fa; --orange:#fb923c; --red:#f87171;
+    --purple:#a78bfa; --txt:#e8edf4; --muted:#8b95a7; --line:#2a3245;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"SF Pro SC","PingFang SC",sans-serif}
+  body{background:var(--bg);color:var(--txt);padding:40px 24px}
+  header.page{text-align:center;margin-bottom:36px}
+  header.page h1{font-size:26px;font-weight:700;letter-spacing:.5px}
+  header.page h1 span{color:var(--green)}
+  header.page p{color:var(--muted);margin-top:8px;font-size:13px}
+  .grid{display:flex;flex-wrap:wrap;gap:36px;justify-content:center}
+  .screen-wrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .screen-label{font-size:14px;font-weight:600;color:var(--txt)}
+  .screen-label small{display:block;font-weight:400;color:var(--muted);margin-top:3px;font-size:11px}
+  /* iPhone 外框 */
+  .phone{width:390px;height:844px;background:#000;border-radius:54px;padding:12px;
+    box-shadow:0 24px 70px rgba(0,0,0,.6),inset 0 0 0 2px #3a3f4d;position:relative;flex-shrink:0}
+  .phone-inner{width:100%;height:100%;border-radius:44px;overflow:hidden;background:var(--panel);
+    display:flex;flex-direction:column;position:relative}
+  /* 灵动岛 */
+  .island{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:118px;height:34px;
+    background:#000;border-radius:20px;z-index:50}
+  /* 状态栏 */
+  .status{height:56px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 6px;
+    font-size:15px;font-weight:600;flex-shrink:0}
+  .status .icons{display:flex;gap:6px;align-items:center;font-size:13px}
+  /* 底部 tab */
+  .tabbar{height:84px;background:rgba(22,27,38,.92);backdrop-filter:blur(20px);border-top:1px solid var(--line);
+    display:flex;align-items:flex-start;justify-content:space-around;padding-top:10px;flex-shrink:0}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--muted);width:60px}
+  .tab.active{color:var(--green)}
+  .tab .ico{font-size:22px}
+  /* 通用内容区 */
+  .content{flex:1;overflow:hidden;padding:8px 20px 0;display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--card);border-radius:16px;padding:16px;border:1px solid var(--line)}
+  h3.sec{font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+  h3.sec small{color:var(--muted);font-weight:400;font-size:12px}
+
+  /* ===== S1 今日 ===== */
+  .ring-wrap{display:flex;flex-direction:column;align-items:center;padding:18px 0 8px}
+  .ring{width:200px;height:200px;border-radius:50%;
+    background:conic-gradient(var(--green) 0 231deg,var(--card2) 231deg 360deg);
+    display:flex;align-items:center;justify-content:center;position:relative}
+  .ring::before{content:"";position:absolute;width:164px;height:164px;border-radius:50%;background:var(--card)}
+  .ring-num{position:relative;text-align:center}
+  .ring-num b{font-size:40px;font-weight:800;letter-spacing:-1px}
+  .ring-num em{font-style:normal;color:var(--muted);font-size:14px;display:block;margin-top:2px}
+  .macros{display:flex;gap:10px}
+  .macro{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center}
+  .macro b{font-size:16px;display:block}
+  .macro small{color:var(--muted);font-size:10px}
+  .macro .bar{height:5px;border-radius:3px;background:var(--card2);margin-top:7px;overflow:hidden}
+  .macro .bar i{display:block;height:100%;border-radius:3px}
+  .meal-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .meal-row:last-child{border-bottom:0}
+  .meal-thumb{width:46px;height:46px;border-radius:12px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:24px}
+  .meal-info{flex:1;min-width:0}
+  .meal-info b{font-size:13.5px;display:block}
+  .meal-info small{color:var(--muted);font-size:11px}
+  .meal-kcal{font-size:14px;font-weight:700;text-align:right}
+  .meal-kcal small{display:block;color:var(--muted);font-weight:400;font-size:10px}
+  .fab{position:absolute;bottom:104px;right:20px;width:58px;height:58px;border-radius:50%;
+    background:linear-gradient(135deg,#34d399,#059669);display:flex;align-items:center;justify-content:center;
+    font-size:26px;box-shadow:0 10px 26px rgba(52,211,153,.45);z-index:20}
+
+  /* ===== S2 拍照识别 ===== */
+  .cam{flex:1;position:relative;background:radial-gradient(ellipse at 50% 35%,#3d2f1e 0%,#1a130a 70%);overflow:hidden}
+  .plate{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);width:250px;height:250px;border-radius:50%;
+    background:radial-gradient(circle at 40% 35%,#f5e9d8,#e8d5b8);box-shadow:0 24px 60px rgba(0,0,0,.55)}
+  .plate::after{content:"";position:absolute;inset:22px;border-radius:50%;border:2px solid #d9c3a3}
+  .food1{position:absolute;width:110px;height:80px;border-radius:50%;left:38px;top:60px;
+    background:radial-gradient(circle at 35% 30%,#fff,#e8e2d0)}
+  .food2{position:absolute;width:130px;height:95px;border-radius:50%;right:20px;bottom:30px;
+    background:radial-gradient(circle at 60% 30%,#7ca977,#4d7a4a)}
+  .food3{position:absolute;width:90px;height:70px;border-radius:50%;left:48px;bottom:40px;
+    background:radial-gradient(circle at 45% 35%,#c98b5a,#96552e)}
+  .scanline{position:absolute;left:0;right:0;height:3px;top:30%;
+    background:linear-gradient(90deg,transparent,#34d399,transparent);
+    box-shadow:0 0 24px 6px rgba(52,211,153,.35);animation:scan 2.2s ease-in-out infinite}
+  @keyframes scan{0%,100%{top:24%}50%{top:70%}}
+  .cam-mask{position:absolute;inset:0;box-shadow:inset 0 0 0 100vmax rgba(5,8,14,.55)}
+  .corner{position:absolute;width:34px;height:34px;border:3px solid var(--green)}
+  .c1{left:40px;top:110px;border-right:0;border-bottom:0;border-radius:10px 0 0 0}
+  .c2{right:40px;top:110px;border-left:0;border-bottom:0;border-radius:0 10px 0 0}
+  .c3{left:40px;bottom:180px;border-right:0;border-top:0;border-radius:0 0 0 10px}
+  .c4{right:40px;bottom:180px;border-left:0;border-top:0;border-radius:0 0 10px 0}
+  .cam-bottom{position:absolute;left:0;right:0;bottom:26px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .ai-badge{background:rgba(13,17,23,.8);border:1px solid var(--green);color:var(--green);
+    padding:9px 18px;border-radius:22px;font-size:13px;font-weight:600;backdrop-filter:blur(8px);
+    display:flex;gap:8px;align-items:center}
+  .dot-pulse{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.25}}
+  .shutter{width:72px;height:72px;border-radius:50%;border:4px solid #fff;padding:5px}
+  .shutter i{display:block;width:100%;height:100%;border-radius:50%;background:#fff}
+  .gal{position:absolute;left:34px;bottom:26px;width:44px;height:44px;border-radius:12px;
+    background:linear-gradient(135deg,#64748b,#334155);border:2px solid #fff3}
+
+  /* ===== S3 识别结果 ===== */
+  .res-photo{height:130px;border-radius:14px;position:relative;overflow:hidden;
+    background:radial-gradient(ellipse at 30% 30%,#5b8a56,#2c4a2a)}
+  .res-photo .emoji{position:absolute;font-size:44px}
+  .res-photo .conf{position:absolute;right:10px;top:10px;background:rgba(0,0,0,.55);color:var(--green);
+    font-size:11px;padding:4px 10px;border-radius:12px;backdrop-filter:blur(6px)}
+  .item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .item:last-child{border:0}
+  .item .name{flex:1}
+  .item .name b{font-size:13.5px;display:block}
+  .item .name small{color:var(--muted);font-size:10.5px}
+  .stepper{display:flex;align-items:center;gap:0;background:var(--card2);border-radius:9px;overflow:hidden}
+  .stepper span{width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+    font-size:15px;color:var(--blue);font-weight:700}
+  .stepper b{min-width:56px;text-align:center;font-size:12px;font-weight:600}
+  .item .kcal{width:64px;text-align:right;font-weight:700;font-size:13.5px}
+  .total-bar{background:linear-gradient(135deg,#34d39922,#05966922);border:1px solid var(--green);
+    border-radius:14px;padding:13px 16px;display:flex;justify-content:space-between;align-items:center}
+  .total-bar b{font-size:22px;color:var(--green)}
+  .btn-primary{margin:4px 0 14px;height:52px;border-radius:15px;background:linear-gradient(135deg,#34d399,#059669);
+    color:#04150c;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 12px 28px rgba(52,211,153,.35)}
+  .adjust{color:var(--blue);font-size:12px;text-align:center;padding:6px}
+
+  /* ===== S4 记录 ===== */
+  .day-group small.day{color:var(--muted);font-size:11px;display:block;margin:2px 0 6px 2px}
+  .log-card{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:12px;margin-bottom:9px}
+  .log-thumb{width:52px;height:52px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px}
+  .log-main{flex:1;min-width:0}
+  .log-main b{display:block;font-size:13.5px;margin-bottom:3px}
+  .log-tags{display:flex;gap:5px;flex-wrap:wrap}
+  .tag{font-size:10px;background:var(--card2);border-radius:6px;padding:3px 7px;color:var(--muted)}
+  .log-right{text-align:right}
+  .log-right b{font-size:15px}
+  .log-right small{display:block;color:var(--muted);font-size:10px}
+
+  /* ===== S5 趋势 ===== */
+  .chart-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px}
+  .bars{display:flex;align-items:flex-end;gap:9px;height:130px;padding-top:8px}
+  .bcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+  .bar{width:100%;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,var(--green),#0a9b6c);position:relative}
+  .bar.over{background:linear-gradient(180deg,var(--red),#b91c1c)}
+  .bcol small{color:var(--muted);font-size:9.5px}
+  .bcol .v{font-size:9px;color:var(--muted)}
+  .target-line{position:relative}
+  .target-line::after{content:"";position:absolute;left:0;right:0;top:38px;border-top:2px dashed #ffffff3d}
+  .weight-chart{display:flex;align-items:flex-end;gap:8px;height:90px;padding-top:8px}
+  .wpt{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;justify-content:flex-end;height:100%}
+  .wpt i{width:9px;height:9px;border-radius:50%;background:var(--blue);box-shadow:0 0 10px #60a5fa66}
+  .wline{position:absolute;left:24px;right:24px;bottom:52px;height:1.5px;
+    background:linear-gradient(90deg,transparent,#60a5fa88,transparent)}
+  .stat-row{display:flex;gap:10px}
+  .stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}
+  .stat b{font-size:18px;display:block}
+  .stat small{color:var(--muted);font-size:10px}
+  .stat.good b{color:var(--green)} .stat.warn b{color:var(--orange)}
+
+  /* ===== S6 我的 ===== */
+  .profile{display:flex;align-items:center;gap:14px;padding:6px 2px}
+  .avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#34d399,#3b82f6);
+    display:flex;align-items:center;justify-content:center;font-size:30px}
+  .profile b{font-size:18px;display:block}
+  .profile small{color:var(--muted)}
+  .goal-card{background:linear-gradient(135deg,#1e3a5f,#172b45);border:1px solid #2b4a73;border-radius:16px;padding:16px}
+  .goal-nums{display:flex;justify-content:space-between;margin-top:10px}
+  .goal-nums div{text-align:center}
+  .goal-nums b{font-size:20px;display:block}
+  .goal-nums small{color:var(--muted);font-size:10px}
+  .gbar{height:8px;border-radius:4px;background:#ffffff14;margin-top:12px;overflow:hidden}
+  .gbar i{display:block;width:42%;height:100%;background:linear-gradient(90deg,#60a5fa,#34d399);border-radius:4px}
+  .cell{display:flex;align-items:center;gap:12px;padding:14px 4px;border-bottom:1px solid var(--line)}
+  .cell:last-child{border:0}
+  .cell .ico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px}
+  .cell span{flex:1;font-size:14px}
+  .cell em{font-style:normal;color:var(--muted);font-size:12px}
+  .cell .chev{color:var(--muted)}
+
+  .footer-note{text-align:center;color:var(--muted);font-size:12px;margin-top:44px;line-height:1.8}
+</style>
+</head>
+<body>
+
+<header class="page">
+  <h1>📸 SnapCal <span>卡路里相机</span></h1>
+  <p>iOS 高保真原型 · 6 个核心页面 · SwiftUI 实现基准</p>
+</header>
+
+<div class="grid">
+
+<!-- ============ S1 今日首页 ============ -->
+<div class="screen-wrap">
+  <div class="phone"><div class="phone-inner"><div class="island"></div>
+    <div class="status"><span>9:41</span><span class="icons">📶 🛜 🔋</span></div>
+    <div class="content">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><b style="font-size:20px">今日概览</b>
+        <div style="color:var(--muted);font-size:12px;margin-top:2px">8月13日 周四 · 减脂中</div></div>
+        <span style="font-size:22px">🔔</span>
+      </div>
+      <div class="ring-wrap">
+        <div class="ring"><div class="ring-num"><b>354</b><em>/ 2200 kcal</em></div></div>
+      </div>
+      <div class="macros">
+        <div class="macro"><b style="color:var(--blue)">26g</b><small>蛋白质 34/130g</small>
+          <div class="bar"><i style="width:20%;background:var(--blue)"></i></div></div>
+        <div class="macro"><b style="color:var(--orange)">41g</b><small>碳水 48/220g</small>
+          <div class="bar"><i style="width:22%;background:var(--orange)"></i></div></div>
+        <div class="macro"><b style="color:var(--red)">9g</b><small>脂肪 6/60g</small>
+          <div class="bar"><i style="width:10%;background:var(--red)"></i></div></div>
+      </div>
+      <div class="card" style="padding:6px 16px">
+        <div class="meal-row">
+          <div class="meal-thumb" style="background:#7f553922">🥣</div>
+          <div class="meal-info"><b>早餐 · 燕麦牛奶碗</b><small>08:12 · AI 识别 3 项</small></div>
+          <div class="meal-kcal">354<small>kcal</small></div>
+        </div>
+        <div class="meal-row" style="opacity:.45">
+          <div class="meal-thumb" style="background:#7f553911">🍽️</div>
+          <div class="meal-info"><b>午餐 · 待记录</b><small>拍一张照片即可</small></div>
+          <div class="meal-kcal">—<small></small></div>
+        </div>
+      </div>
+      <div class="card" style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:26px">🔥</span>
+        <div style="flex:1"><b style="font-size:13px">已消耗 1,846 kcal</b>
+          <div style="color:var(--muted);font-size:11px">步数 8,421 · 运动 32 分钟</div></div>
+        <small style="color:var(--green);font-weight:700;font-size:12px">缺口 1,492</small>
+      </div>
+    </div>
+    <div class="fab">📷</div>
+    <div class="tabbar">
+      <div class="tab active"><span class="ico">🏠</span>今日</div>
+      <div class="tab"><span class="ico">📖</span>记录</div>
+      <div class="tab"><span class="ico" style="width:60px"></span></div>
+      <div class="tab"><span class="ico">📈</span>趋势</div>
+      <div class="tab"><span class="ico">👤</span>我的</div>
+    </div>
+  </div></div>
+  <div class="screen-label">① 今日首页<small>卡路里圆环 + 三大营养素 + 餐次列表 + 悬浮拍照</small></div>
+</div>
+
+<!-- ============ S2 拍照识别 ============ -->
+<div class="screen-wrap">
+  <div class="phone"><div class="phone-inner"><div class="island"></div>
+    <div class="status" style="color:#fff"><span>9:41</span><span class="icons">📶 🛜 🔋</span></div>
+    <div class="cam">
+      <div class="cam-mask"></div>
+      <div class="plate"><div class="food1"></div><div class="food2"></div><div class="food3"></div></div>
+      <div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+      <div class="scanline"></div>
+      <div class="gal"></div>
+      <div class="cam-bottom">
+        <div class="ai-badge"><span class="dot-pulse"></span>AI 正在识别食物…</div>
+        <div class="shutter"><i></i></div>
+        <div style="color:#ffffff88;font-size:11px">对准餐盘 · 自动检测边界</div>
+      </div>
+    </div>
+  </div></div>
+  <div class="screen-label">② 拍照识别<small>相机取景 + 扫描动画 + 上传后端 AI 分析</small></div>
+</div>
+
+<!-- ============ S3 识别结果 ============ -->
+<div class="screen-wrap">
+  <div class="phone"><div class="phone-inner"><div class="island"></div>
+    <div class="status"><span>9:41</span><span class="icons">📶 🛜 🔋</span></div>
+    <div class="content">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">←</span><b style="font-size:17px">识别结果</b>
+        <span style="margin-left:auto;color:var(--muted);font-size:12px">12:36 · 午餐</span>
+      </div>
+      <div class="res-photo">
+        <span class="emoji" style="left:18px;bottom:14px">🍗</span>
+        <span class="emoji" style="right:110px;top:22px">🍚</span>
+        <span class="emoji" style="right:24px;bottom:20px">🥦</span>
+        <span class="conf">✓ 置信度 96%</span>
+      </div>
+      <div class="card" style="padding:4px 16px">
+        <div class="item">
+          <div class="name"><b>🍚 米饭</b><small>284 kJ/100g · 主食</small></div>
+          <div class="stepper"><span>−</span><b>200 g</b><span>＋</span></div>
+          <div class="kcal">232</div>
+        </div>
+        <div class="item">
+          <div class="name"><b>🍗 红烧鸡腿</b><small>890 kJ/100g · 蛋白质</small></div>
+          <div class="stepper"><span>−</span><b>120 g</b><span>＋</span></div>
+          <div class="kcal">245</div>
+        </div>
+        <div class="item">
+          <div class="name"><b>🥦 清炒西兰花</b><small>142 kJ/100g · 蔬菜</small></div>
+          <div class="stepper"><span>−</span><b>150 g</b><span>＋</span></div>
+          <div class="kcal">51</div>
+        </div>
+      </div>
+      <div class="macros">
+        <div class="macro"><b style="color:var(--blue)">28g</b><small>蛋白质</small></div>
+        <div class="macro"><b style="color:var(--orange)">58g</b><small>碳水</small></div>
+        <div class="macro"><b style="color:var(--red)">12g</b><small>脂肪</small></div>
+      </div>
+      <div class="total-bar"><div><b>528</b> <span style="color:var(--muted);font-size:12px">kcal</span>
+        <div style="color:var(--muted);font-size:11px">占今日目标 24%</div></div>
+        <span style="font-size:30px">🍽️</span></div>
+      <div class="adjust">✏️ 识别有误？点食物名搜索食物库修正</div>
+      <div class="btn-primary">记入今日午餐</div>
+    </div>
+  </div></div>
+  <div class="screen-label">③ 结果确认<small>AI 返回菜品 + 可调克重 + 手动修正入口</small></div>
+</div>
+
+<!-- ============ S4 饮食记录 ============ -->
+<div class="screen-wrap">
+  <div class="phone"><div class="phone-inner"><div class="island"></div>
+    <div class="status"><span>9:41</span><span class="icons">📶 🛜 🔋</span></div>
+    <div class="content">
+      <b style="font-size:20px">饮食记录</b>
+      <div class="day-group">
+        <small class="day">今天 · 8月13日 周四</small>
+        <div class="log-card">
+          <div class="log-thumb" style="background:#7ca97733">🥣</div>
+          <div class="log-main"><b>燕麦牛奶碗 + 鸡蛋</b>
+            <div class="log-tags"><span class="tag">燕麦 60g</span><span class="tag">牛奶 250ml</span><span class="tag">鸡蛋 1个</span></div></div>
+          <div class="log-right"><b>354</b><small>kcal · 早餐</small></div>
+        </div>
+      </div>
+      <div class="day-group">
+        <small class="day">昨天 · 8月12日 周三 · 共 1,982 kcal</small>
+        <div class="log-card">
+          <div class="log-thumb" style="background:#c98b5a33">🍱</div>
+          <div class="log-main"><b>鸡腿饭套餐</b>
+            <div class="log-tags"><span class="tag">米饭 200g</span><span class="tag">鸡腿 120g</span></div></div>
+          <div class="log-right"><b>528</b><small>kcal · 午餐</small></div>
+        </div>
+        <div class="log-card">
+          <div class="log-thumb" style="background:#60a5fa33">🍜</div>
+          <div class="log-main"><b>番茄牛腩面</b>
+            <div class="log-tags"><span class="tag">面条 300g</span><span class="tag">牛腩 150g</span></div></div>
+          <div class="log-right"><b>762</b><small>kcal · 晚餐</small></div>
+        </div>
+        <div class="log-card">
+          <div class="log-thumb" style="background:#a78bfa33">🍎</div>
+          <div class="log-main"><b>苹果 + 酸奶</b>
+            <div class="log-tags"><span class="tag">苹果 1个</span><span class="tag">酸奶 200g</span></div></div>
+          <div class="log-right"><b>285</b><small>kcal · 加餐</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tab"><span class="ico">🏠</span>今日</div>
+      <div class="tab active"><span class="ico">📖</span>记录</div>
+      <div class="tab"><span class="ico" style="width:60px"></span></div>
+      <div class="tab"><span class="ico">📈</span>趋势</div>
+      <div class="tab"><span class="ico">👤</span>我的</div>
+    </div>
+  </div></div>
+  <div class="screen-label">④ 饮食记录<small>按天分组 + 菜品明细标签 + 热量汇总</small></div>
+</div>
+
+<!-- ============ S5 趋势统计 ============ -->
+<div class="screen-wrap">
+  <div class="phone"><div class="phone-inner"><div class="island"></div>
+    <div class="status"><span>9:41</span><span class="icons">📶 🛜 🔋</span></div>
+    <div class="content">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:20px">趋势</b>
+        <span style="background:var(--card2);border-radius:10px;padding:5px 12px;font-size:12px">周 ▾</span>
+      </div>
+      <div class="stat-row">
+        <div class="stat good"><b>1,846</b><small>日均摄入 kcal</small></div>
+        <div class="stat good"><b>-0.4kg</b><small>本周体重变化</small></div>
+        <div class="stat warn"><b>5/7</b><small>达标天数</small></div>
+      </div>
+      <div class="chart-card target-line">
+        <h3 class="sec">每日摄入 <small>虚线 = 目标 2200</small></h3>
+        <div class="bars">
+          <div class="bcol"><div class="v">2010</div><div class="bar" style="height:78%"></div><small>一</small></div>
+          <div class="bcol"><div class="v">1745</div><div class="bar" style="height:62%"></div><small>二</small></div>
+          <div class="bcol"><div class="v">2530</div><div class="bar over" style="height:96%"></div><small>三</small></div>
+          <div class="bcol"><div class="v">1890</div><div class="bar" style="height:70%"></div><small>四</small></div>
+          <div class="bcol"><div class="v">1620</div><div class="bar" style="height:56%"></div><small>五</small></div>
+          <div class="bcol"><div class="v">2210</div><div class="bar over" style="height:84%"></div><small>六</small></div>
+          <div class="bcol"><div class="v">1920</div><div class="bar" style="height:72%"></div><small>日</small></div>
+        </div>
+      </div>
+      <div class="chart-card" style="position:relative">
+        <h3 class="sec">体重趋势 <small>65.2 → 63.9 kg</small></h3>
+        <div class="weight-chart">
+          <div class="wpt"><i></i></div><div class="wpt" style="padding-bottom:8px"><i></i></div>
+          <div class="wpt" style="padding-bottom:20px"><i></i></div><div class="wpt" style="padding-bottom:18px"><i></i></div>
+          <div class="wpt" style="padding-bottom:32px"><i></i></div><div class="wpt" style="padding-bottom:44px"><i></i></div>
+          <div class="wpt" style="padding-bottom:56px"><i></i></div>
+        </div>
+        <div class="wline"></div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tab"><span class="ico">🏠</span>今日</div>
+      <div class="tab"><span class="ico">📖</span>记录</div>
+      <div class="tab"><span class="ico" style="width:60px"></span></div>
+      <div class="tab active"><span class="ico">📈</span>趋势</div>
+      <div class="tab"><span class="ico">👤</span>我的</div>
+    </div>
+  </div></div>
+  <div class="screen-label">⑤ 趋势统计<small>摄入柱状图(超标变红) + 体重折线 + 达标率</small></div>
+</div>
+
+<!-- ============ S6 我的 ============ -->
+<div class="screen-wrap">
+  <div class="phone"><div class="phone-inner"><div class="island"></div>
+    <div class="status"><span>9:41</span><span class="icons">📶 🛜 🔋</span></div>
+    <div class="content">
+      <b style="font-size:20px">我的</b>
+      <div class="profile">
+        <div class="avatar">🐟</div>
+        <div><b>yupan</b><small>已坚持 23 天 · 记录 61 餐</small></div>
+      </div>
+      <div class="goal-card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <b style="font-size:14px">🎯 减脂目标</b>
+          <small style="color:var(--blue)">编辑</small>
+        </div>
+        <div class="goal-nums">
+          <div><b style="color:var(--blue)">65.2</b><small>开始 kg</small></div>
+          <div><b style="color:var(--green)">63.9</b><small>当前 kg</small></div>
+          <div><b>60.0</b><small>目标 kg</small></div>
+          <div><b style="color:var(--orange)">2200</b><small>每日 kcal</small></div>
+        </div>
+        <div class="gbar"><i></i></div>
+        <small style="color:var(--muted);display:block;margin-top:8px;font-size:11px">已完成 43% · 预计 10月8日达成</small>
+      </div>
+      <div class="card" style="padding:2px 16px">
+        <div class="cell"><div class="ico" style="background:#34d39922">👤</div><span>个人资料</span><em>身高/年龄/性别</em><span class="chev">›</span></div>
+        <div class="cell"><div class="ico" style="background:#60a5fa22">🎯</div><span>目标与计划</span><em>减脂 · 中速</em><span class="chev">›</span></div>
+        <div class="cell"><div class="ico" style="background:#fb923c22">🍎</div><span>健康数据</span><em>同步 Apple 健康</em><span class="chev">›</span></div>
+        <div class="cell"><div class="ico" style="background:#a78bfa22">📦</div><span>食物库管理</span><em>常用食物</em><span class="chev">›</span></div>
+        <div class="cell"><div class="ico" style="background:#f8717122">💎</div><span>SnapCal Pro</span><em style="color:var(--green);font-weight:700">首年 ¥68</em><span class="chev">›</span></div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tab"><span class="ico">🏠</span>今日</div>
+      <div class="tab"><span class="ico">📖</span>记录</div>
+      <div class="tab"><span class="ico" style="width:60px"></span></div>
+      <div class="tab"><span class="ico">📈</span>趋势</div>
+      <div class="tab active"><span class="ico">👤</span>我的</div>
+    </div>
+  </div></div>
+  <div class="screen-label">⑥ 我的<small>减脂目标进度 + Apple 健康同步 + Pro 订阅</small></div>
+</div>
+
+</div>
+
+<div class="footer-note">
+  SnapCal 卡路里相机 · SwiftUI + Java 后端 + AI 视觉识别<br>
+  原型基于 iPhone 14 Pro (390×844) 设计基准 · 配色 #34D399 / 深色健康风
+</div>
+
+</body>
+</html>
