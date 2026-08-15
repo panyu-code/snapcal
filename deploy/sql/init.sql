@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS `sc_meal_item` (
 CREATE TABLE IF NOT EXISTS `sc_food` (
   `id`           BIGINT PRIMARY KEY AUTO_INCREMENT,
   `name`         VARCHAR(100) NOT NULL,
+  `emoji`        VARCHAR(8)   DEFAULT NULL COMMENT '食物emoji', 
   `category`     VARCHAR(30)  DEFAULT NULL,
   `kcal_per100g` INT         DEFAULT 0,
   `protein_per100g` DOUBLE   DEFAULT 0,

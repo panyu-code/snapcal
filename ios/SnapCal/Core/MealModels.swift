@@ -87,6 +87,7 @@ struct MealSaveReq: Codable {
 struct Food: Codable, Identifiable {
     let id: Int64
     let name: String
+    var emoji: String?
     let category: String?
     var kcalPer100g: Int?
     var proteinPer100g: Double?

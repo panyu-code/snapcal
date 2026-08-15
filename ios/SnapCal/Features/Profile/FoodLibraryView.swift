@@ -96,7 +96,7 @@ struct FoodLibraryView: View {
 
     private func foodRow(_ food: Food) -> some View {
         HStack(spacing: 12) {
-            Text(FoodEmoji.forFood(food.name))
+            Text(food.emoji ?? FoodEmoji.forFood(food.name))
                 .font(.title3)
                 .frame(width: 42, height: 42)
                 .background(RoundedRectangle(cornerRadius: 10).fill(Color.weakFill))
