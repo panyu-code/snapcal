@@ -72,7 +72,7 @@ struct HistoryView: View {
                 if let items = meal.items, !items.isEmpty {
                     HStack(spacing: 5) {
                         ForEach(items.prefix(4)) { item in
-                            Text("\(item.foodName) \(item.weightG)g")
+                            Text("\(FoodEmoji.forFood(item.foodName)) \(item.foodName) \(item.weightG)g")
                                 .font(.caption2)
                                 .padding(.horizontal, 7).padding(.vertical, 2)
                                 .background(RoundedRectangle(cornerRadius: 6).fill(.weakFill))

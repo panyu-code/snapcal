@@ -96,7 +96,7 @@ struct FoodLibraryView: View {
 
     private func foodRow(_ food: Food) -> some View {
         HStack(spacing: 12) {
-            Text(categoryEmoji(food.category))
+            Text(FoodEmoji.forFood(food.name))
                 .font(.title3)
                 .frame(width: 42, height: 42)
                 .background(RoundedRectangle(cornerRadius: 10).fill(Color.weakFill))
@@ -115,29 +115,6 @@ struct FoodLibraryView: View {
         .cardStyle()
     }
 
-    private func categoryEmoji(_ cat: String?) -> String {
-        switch cat {
-        case "主食": return "🍚"
-        case "肉类": return "🥩"
-        case "蔬菜": return "🥦"
-        case "水果": return "🍎"
-        case "水产": return "🦐"
-        case "蛋奶", "蛋类": return "🥚"
-        case "豆制品": return "🫘"
-        case "坚果": return "🥜"
-        case "饮品": return "🥤"
-        case "甜品": return "🍮"
-        case "零食": return "🍪"
-        case "烘焙": return "🥐"
-        case "汤羹": return "🍲"
-        case "粥品": return "🥣"
-        case "菜肴": return "🍱"
-        case "快餐": return "🍔"
-        case "早点": return "🥟"
-        case "调料": return "🧂"
-        default: return "🍽️"
-        }
-    }
 
     private func loadCategories() async {
         do {
