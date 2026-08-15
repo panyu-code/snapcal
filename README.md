@@ -314,55 +314,69 @@ SnapCal/
 
 > 前置：Mac + Xcode 15 + Apple 开发者账号（¥688/年，上架必需）
 
-### M1 — iOS 工程基建（1 周）
-- [ ] Xcode 项目 + SwiftUI TabView 框架（五 Tab 结构照原型）
-- [ ] Apple 登录 + JWT 对接
-- [ ] 网络层 + 用户资料/目标设置页
+### M1 — iOS 工程基建 ✅ 已完成
+- [x] Xcode 工程（xcodegen 生成）+ SwiftUI 五 Tab 框架
+- [x] Apple 登录（后端 JWKS 拉取 + RS256 验签）+ 开发模式登录
+- [x] 网络层（统一响应/JWT/Keychain→UserDefaults）+ 资料/目标设置页
+- [x] 后端已部署 `myblog.wiki:8081`（Docker + MySQL）
 
-### M2 — 核心链路：拍照 → AI → 保存（2 周）⭐
-- [ ] 相机页（AVFoundation + PhotosPicker）
-- [ ] 后端：`/vision/recognize`（图片压缩存储 + 多模态 API + Prompt 解析）
-- [ ] 结果确认页（步进器调克重 + 热量重算）
-- [ ] 食物库搜索替换 + 食物库数据导入
-- [ ] 餐次保存 API
+### M2 — 核心链路：拍照 → AI → 保存 ✅ 已完成
+- [x] 真机相机（AVFoundation 拍照/权限/快门）+ 模拟器相册回退
+- [x] 后端 `/vision/recognize`：图片压缩 → RustFS 存储 → **智谱 GLM-4V-Flash 真实识别**（可切换 provider）
+- [x] 结果确认页：克重步进器实时重算 + 扫描线动效 + 识别中显示原图背景
+- [x] **食物库搜索替换**（识别错了手动换）+ **食物项删除**
+- [x] 食物库 **622 种**常见食物（15 大类，每 100g 营养齐全）
+- [x] 餐次保存 API（自动汇总营养）+ 按日/区间查询
 
-### M3 — 今日与记录（1 周）
-- [ ] 今日圆环 + 营养素进度（原型①）
-- [ ] 饮食记录流水页（原型④）
-- [ ] SwiftData 离线缓存 + 弱网同步
+### M3 — 今日与记录 ✅ 已完成
+- [x] 今日圆环 + 三大营养素进度（真实数据）
+- [x] 饮食记录流水页（按天分组/删除/下拉刷新）
+- [x] **餐次详情页**（照片大图 + 食物明细 + 营养汇总 + 删除）
+- [x] SwiftData 离线缓存（断网可看历史）+ 保存后实时刷新（通知联动）
 
-### M4 — 趋势与目标（1 周）
-- [ ] Swift Charts 摄入柱状图 + 体重折线（原型⑤）
-- [ ] 目标计算（Mifflin-St Jeor）+ 达成预测（原型⑥）
-- [ ] HealthKit 同步（读消耗/写膳食）
+### M4 — 趋势与目标 ✅ 已完成
+- [x] Swift Charts 摄入柱状图（周/月，超标红色，数值标注，月视图横滑）
+- [x] 体重折线 + 记体重弹窗
+- [x] 目标计算（Mifflin-St Jeor，健康下限保护）
+- [x] HealthKit 同步（读步数/活动消耗 + 写膳食能量）
 
-### M5 — 打磨与 Widget（1 周）
-- [ ] 桌面 Widget（今日剩余热量）
-- [ ] 识别动画/空态/引导页
-- [ ] 免费 3 次/日限制 + IAP 订阅
+### M5 — 打磨与 Widget 🟡 部分完成
+- [x] 识别扫描线动效 + 空态 + **首次启动引导页**（3 页滑动）
+- [x] **主题系统**（深色/浅色/跟随系统，我的页切换）
+- [x] **头像编辑**（选图 → 缩放预览 → 保存，上传 RustFS）
+- [x] App 图标（仪表盘风格，多版设计可选）
+- [x] Widget 代码已完成（今日剩余热量圆环，小/中尺寸）
+- [ ] Widget 上线（需付费开发者账号的 App Group 权限，当前从免费签名工程中移除，代码保留在 `SnapCalWidget/`）
+- [ ] 免费 3 次/日限制 + IAP 订阅（暂缓）
 
-### M6 — 上架（0.5 周）
-- [ ] TestFlight 内测（20 人）
-- [ ] App Store 审核（注意：健康类需说明数据用途；AI 功能按 Apple 新规需标注）
-- [ ] 上线 🎉
+### M6 — 上架 ⏳ 待办
+- [ ] 付费开发者账号（¥688/年）
+- [ ] TestFlight 内测
+- [ ] 后端切 HTTPS（`api.myblog.wiki` + 证书）
+- [ ] App Store 审核材料（健康数据用途说明、AI 功能标注、隐私政策）
 
-**总计约 6.5 周**（单人业余时间估算）
+**开发侧全部完成**（除上架），后端运行中，真机可完整使用（免费证书 7 天重签）。
 
 ---
 
-## 十、部署方案
+## 十、部署方案（当前实际状态）
 
-复用现有服务器（myblog.wiki）：
+后端已部署在 `myblog.wiki`（腾讯云，与 DataViz 共用服务器）：
 
 ```
-/opt/snapcal/
-├── docker-compose.yml   # mysql + server（RustFS 复用 dataviz 的）
-└── server/              # Spring Boot jar → Docker 镜像
+/opt/snapcal/server/
+├── snapcal-server:0.5  # Docker 容器 (端口 8081, context-path /api)
+├── restart.sh          # 重启脚本 (环境变量注入 + 日志快照)
+└── snapcal.log         # 日志文件
+
+依赖服务 (复用 dataviz 实例):
+├── dataviz-mysql       # snapcal 数据库 (5 张表 + 622 食物)
+└── dataviz-rustfs      # 对象存储 (snapcal bucket 公开读, 存餐盘照片/头像)
 ```
 
-- 域名：`api.myblog.wiki`（新增子域名指向同服务器，Nginx 配 HTTPS——**iOS 上架后端必须 HTTPS + ATS**）
-- 证书：Let's Encrypt 免费证书，certbot 自动续期
-- AI Key、JWT 密钥走环境变量（沿用 restart.sh 模式）
+- 接口地址：`http://myblog.wiki:8081/api`（真机直连，ATS 已放行 HTTP）
+- 视觉 AI：智谱 GLM-4V-Flash（key 经环境变量注入 restart.sh）
+- 上架前需切 HTTPS：`api.myblog.wiki` 子域名 + Let's Encrypt 证书 + 关闭 DEV_MODE
 
 ---
 
