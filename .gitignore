@@ -10,3 +10,6 @@ server/target/
 *.class
 # 本地配置
 .env
+
+# 本地构建产物
+ios/build/
