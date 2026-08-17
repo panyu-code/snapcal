@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 食物库搜索弹窗 (识别错了替换用)
+/// 食物库搜索弹窗 (识别错了替换用, 输入即搜 + 关键词高亮)
 struct FoodSearchSheet: View {
     let onSelect: (Food) -> Void
 
@@ -8,18 +8,24 @@ struct FoodSearchSheet: View {
     @State private var keyword = ""
     @State private var results: [Food] = []
     @State private var loading = false
+    @State private var searchTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // 搜索框 (输入即搜, 300ms 防抖)
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                     TextField("搜索食物名称", text: $keyword)
                         .autocorrectionDisabled()
                         .submitLabel(.search)
+                        .onChange(of: keyword) { _, _ in scheduleSearch() }
                         .onSubmit { Task { await search() } }
+                    if loading {
+                        ProgressView().controlSize(.small)
+                    }
                     if !keyword.isEmpty {
-                        Button { keyword = ""; results = [] } label: {
+                        Button { clearKeyword() } label: {
                             Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
                         }
                     }
@@ -29,18 +35,19 @@ struct FoodSearchSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
 
-                if loading {
+                if keyword.isEmpty {
+                    Spacer()
+                    Text("输入食物名称, 实时匹配，如「鸡胸肉」「米饭」")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                } else if loading && results.isEmpty {
                     Spacer()
                     ProgressView()
                     Spacer()
-                } else if keyword.isEmpty {
-                    Spacer()
-                    Text("输入食物名称搜索，如「鸡胸肉」「米饭」")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Spacer()
                 } else if results.isEmpty {
                     Spacer()
-                    ContentUnavailableView("没有找到相关食物", systemImage: "magnifyingglass")
+                    ContentUnavailableView("没有找到相关食物", systemImage: "magnifyingglass",
+                                           description: Text("换个关键词试试"))
                     Spacer()
                 } else {
                     List(results) { food in
@@ -50,7 +57,7 @@ struct FoodSearchSheet: View {
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(food.name).font(.subheadline.bold())
+                                    Text.highlighted(food.name, keyword: keyword).font(.subheadline.bold())
                                     Text("\(food.kcalPer100g ?? 0) kcal / 100g · " +
                                          "蛋白 \(food.proteinPer100g ?? 0)g · " +
                                          "碳水 \(food.carbsPer100g ?? 0)g · " +
@@ -82,14 +89,34 @@ struct FoodSearchSheet: View {
         }
     }
 
+    private func clearKeyword() {
+        searchTask?.cancel()
+        keyword = ""
+        results = []
+        loading = false
+    }
+
+    /// 输入防抖: 停止输入 300ms 后自动搜索
+    private func scheduleSearch() {
+        searchTask?.cancel()
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await search()
+        }
+    }
+
     private func search() async {
         guard !keyword.isEmpty else { return }
         loading = true
         defer { loading = false }
+        let kw = keyword
         do {
-            results = try await APIClient.shared.get([Food].self, path: "/food/search", query: ["kw": keyword])
+            let fresh = try await APIClient.shared.get([Food].self, path: "/food/search", query: ["kw": kw])
+            guard kw == keyword else { return }   // 输入已变, 丢弃过期响应
+            results = fresh
         } catch {
-            results = []
+            if kw == keyword { results = [] }
         }
     }
 }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 食物库浏览页: 分类筛选 + 搜索 + 分页列表 (查看营养参数)
+/// 食物库浏览页: 分类筛选 + 实时搜索 + 分页列表 (查看营养参数)
 struct FoodLibraryView: View {
     @State private var categories: [String] = []
     @State private var selectedCategory: String?
@@ -9,21 +9,26 @@ struct FoodLibraryView: View {
     @State private var total = 0
     @State private var page = 1
     @State private var loading = false
+    @State private var searchTask: Task<Void, Never>?
 
     private let pageSize = 50
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // 搜索框
+                // 搜索框 (输入即搜, 300ms 防抖)
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                     TextField("搜索食物", text: $keyword)
                         .autocorrectionDisabled()
                         .submitLabel(.search)
+                        .onChange(of: keyword) { _, _ in scheduleSearch() }
                         .onSubmit { Task { await resetAndLoad() } }
+                    if loading {
+                        ProgressView().controlSize(.small)
+                    }
                     if !keyword.isEmpty {
-                        Button { keyword = ""; Task { await resetAndLoad() } } label: {
+                        Button { keyword = "" } label: {
                             Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
                         }
                     }
@@ -71,6 +76,12 @@ struct FoodLibraryView: View {
                     .padding(.bottom, 20)
                 }
                 .background(Color.pageBG)
+                .overlay {
+                    if !loading && !keyword.isEmpty && total == 0 {
+                        ContentUnavailableView("没有找到相关食物", systemImage: "magnifyingglass",
+                                               description: Text("换个关键词试试"))
+                    }
+                }
             }
             .background(Color.pageBG)
             .navigationTitle("食物库")
@@ -101,7 +112,7 @@ struct FoodLibraryView: View {
                 .frame(width: 46, height: 46)
                 .background(RoundedRectangle(cornerRadius: 10).fill(Color.weakFill))
             VStack(alignment: .leading, spacing: 3) {
-                Text(food.name).font(.subheadline.bold())
+                Text.highlighted(food.name, keyword: keyword).font(.subheadline.bold())
                 Text("蛋白 \(food.proteinPer100g ?? 0)g · 碳水 \(food.carbsPer100g ?? 0)g · 脂肪 \(food.fatPer100g ?? 0)g")
                     .font(.caption2).foregroundStyle(.secondary)
             }
@@ -124,6 +135,16 @@ struct FoodLibraryView: View {
         }
     }
 
+    /// 输入防抖: 停止输入 300ms 后自动搜索 (抖音式)
+    private func scheduleSearch() {
+        searchTask?.cancel()
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await resetAndLoad()
+        }
+    }
+
     private func resetAndLoad() async {
         page = 1
         foods = []
@@ -142,12 +163,15 @@ struct FoodLibraryView: View {
             let records: [Food]
             let total: Int
         }
-        var query: [String: String] = ["current": "\(page)", "size": "\(pageSize)"]
-        if !keyword.isEmpty { query["kw"] = keyword }
-        if let cat = selectedCategory { query["category"] = cat }
+        let kw = keyword, cat = selectedCategory, reqPage = page
+        var query: [String: String] = ["current": "\(reqPage)", "size": "\(pageSize)"]
+        if !kw.isEmpty { query["kw"] = kw }
+        if let cat { query["category"] = cat }
         do {
             let resp: PageResp = try await APIClient.shared.get(PageResp.self, path: "/food/list", query: query)
-            foods.append(contentsOf: resp.records)
+            // 输入/筛选已变, 丢弃过期响应 (防旧结果覆盖新搜索)
+            guard kw == keyword, cat == selectedCategory else { return }
+            if reqPage == 1 { foods = resp.records } else { foods.append(contentsOf: resp.records) }
             total = resp.total
         } catch {
             // 静默
