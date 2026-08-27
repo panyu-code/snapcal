@@ -17,17 +17,24 @@ final class AppModel: ObservableObject {
         restoreTask = Task { await restoreSession() }
     }
 
-    /// 启动时用本地 token 恢复会话 (网络错误不清 token, 仅明确 401 才清)
+    /// 启动时用本地 token 恢复会话 (有缓存用户直接进主界面, 离线也可用)
     func restoreSession() async {
         defer { booted = true }
         guard KeychainStore.token != nil else { return }
+        if let cached: User = CacheStore.shared.load(User.self, key: "me") {
+            user = cached
+        }
         do {
-            user = try await api.get(User.self, path: "/user/me")
+            let fresh = try await api.get(User.self, path: "/user/me")
+            user = fresh
+            CacheStore.shared.save(key: "me", value: fresh)
         } catch let error as APIError {
             if case .http(401, _) = error {
                 KeychainStore.token = nil
+                user = nil
+                CacheStore.shared.remove(key: "me")
             }
-            // 其他错误 (超时/网络) 保留 token, 用户下次操作会重试
+            // 其他错误 (超时/网络): 保留 token 和缓存用户, 主界面照常可用
         } catch {
             // 同上
         }
@@ -41,6 +48,7 @@ final class AppModel: ObservableObject {
         KeychainStore.token = resp.token
         user = resp.user
         storedDevUsername = username
+        CacheStore.shared.save(key: "me", value: resp.user)
     }
 
     /// Apple 登录
@@ -52,16 +60,19 @@ final class AppModel: ObservableObject {
         let resp: LoginResp = try await api.post(path: "/auth/apple", body: body)
         KeychainStore.token = resp.token
         user = resp.user
+        CacheStore.shared.save(key: "me", value: resp.user)
     }
 
     func logout() {
         KeychainStore.token = nil
         user = nil
+        CacheStore.shared.remove(key: "me")
     }
 
     func refreshMe() async {
         if let u = try? await api.get(User.self, path: "/user/me") {
             user = u
+            CacheStore.shared.save(key: "me", value: u)
         }
     }
 }

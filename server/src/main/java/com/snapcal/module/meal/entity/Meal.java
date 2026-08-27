@@ -32,6 +32,9 @@ public class Meal implements Serializable {
 
     private Double aiConfidence;
 
+    /** 备注 */
+    private String note;
+
     private LocalDateTime eatTime;
 
     private LocalDateTime createTime;

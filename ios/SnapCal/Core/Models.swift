@@ -45,3 +45,11 @@ struct ProfileUpdateReq: Codable {
     var pace: String?
     var activityFactor: Double?
 }
+
+// MARK: - 饮水
+
+struct WaterToday: Codable {
+    let date: String
+    var totalMl: Int
+    let goalMl: Int
+}

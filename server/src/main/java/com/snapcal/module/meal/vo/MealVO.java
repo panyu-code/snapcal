@@ -17,6 +17,7 @@ public class MealVO implements Serializable {
     private Double carbsG;
     private Double fatG;
     private LocalDateTime eatTime;
+    private String note;
     private List<Item> items;
 
     @Data

@@ -1,12 +1,15 @@
 import SwiftUI
 
-/// 今日首页: 卡路里圆环 + 三大营养素 + 餐次列表 (照原型①)
+/// 今日首页: 卡路里圆环 + 三大营养素 + 餐次列表 + 饮水 + 消耗 (照原型①)
 struct TodayView: View {
     @EnvironmentObject private var app: AppModel
     @State private var meals: [Meal] = []
     @State private var loading = false
     @State private var steps = 0
     @State private var activeEnergy = 0
+    @State private var water = WaterToday(date: "", totalMl: 0, goalMl: 2000)
+    @State private var showManualMeal = false
+    @State private var manualPresetType = "BREAKFAST"
 
     private var user: User? { app.user }
     private var target: Int { user?.dailyKcalTarget ?? 2200 }
@@ -20,21 +23,38 @@ struct TodayView: View {
                     CalorieRing(eaten: eaten, target: target)
                     MacroCards(eaten: eaten, target: target)
                     mealList
+                    WaterCardView(water: $water)
                     burnCard
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)
             }
-            .refreshable { await loadMeals() }
+            .refreshable { await loadMeals(); await loadWater() }
             .background(Color.pageBG)
             .navigationTitle("今日概览")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        manualPresetType = ManualMealView.mealTypeForNow()
+                        showManualMeal = true
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(.brandGreen)
+                    }
+                    .accessibilityIdentifier("add-meal")
+                }
+            }
             .task {
                 await loadMeals()
+                await loadWater()
                 await loadHealth()
             }
             .onReceive(NotificationCenter.default.publisher(for: .mealSaved)) { _ in
                 Task { await loadMeals() }
+            }
+            .sheet(isPresented: $showManualMeal) {
+                ManualMealView(initialType: manualPresetType)
             }
         }
     }
@@ -58,9 +78,15 @@ struct TodayView: View {
         VStack(spacing: 0) {
             ForEach(Self.mealSlots, id: \.0) { type, emoji, name in
                 let list = meals.filter { $0.mealType == type }
-                mealRow(emoji: emoji, name: name,
-                        desc: list.isEmpty ? "拍一张照片即可" : "已记 \(list.count) 项",
-                        kcal: list.isEmpty ? nil : list.reduce(0) { $0 + ($1.totalKcal ?? 0) })
+                Button {
+                    manualPresetType = type
+                    showManualMeal = true
+                } label: {
+                    mealRow(emoji: emoji, name: name,
+                            desc: list.isEmpty ? "点击拍照或手动记录" : "已记 \(list.count) 项",
+                            kcal: list.isEmpty ? nil : list.reduce(0) { $0 + ($1.totalKcal ?? 0) })
+                }
+                .buttonStyle(.plain)
                 if type != "SNACK" {
                     Divider().overlay(Color.dividerLine)
                 }
@@ -139,6 +165,12 @@ struct TodayView: View {
         activeEnergy = await HealthKitManager.shared.todayActiveEnergy()
     }
 
+    private func loadWater() async {
+        if let fresh = try? await APIClient.shared.get(WaterToday.self, path: "/water/today") {
+            water = fresh
+        }
+    }
+
     private static var todayKey: String {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
@@ -150,6 +182,86 @@ struct TodayView: View {
         fmt.locale = Locale(identifier: "zh_CN")
         fmt.dateFormat = "M月d日 EEEE"
         return fmt.string(from: Date())
+    }
+}
+
+// MARK: - 饮水卡片
+
+struct WaterCardView: View {
+    @Binding var water: WaterToday
+    @State private var adding = false
+
+    private var progress: Double {
+        min(Double(water.totalMl) / Double(max(water.goalMl, 1)), 1)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Text("💧").font(.title2)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("今日饮水").font(.subheadline.bold())
+                    Text("\(water.totalMl) / \(water.goalMl) ml")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                if water.totalMl >= water.goalMl {
+                    Text("已达标 🎉").font(.caption.bold()).foregroundStyle(.brandBlue)
+                }
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.weakFill)
+                    Capsule().fill(
+                        LinearGradient(colors: [.brandBlue, Color(red: 0.3, green: 0.7, blue: 0.95)],
+                                       startPoint: .leading, endPoint: .trailing)
+                    )
+                    .frame(width: max(8, geo.size.width * progress))
+                    .animation(.easeInOut(duration: 0.4), value: water.totalMl)
+                }
+            }
+            .frame(height: 8)
+            HStack(spacing: 8) {
+                quickButton("＋200", ml: 200)
+                quickButton("＋500", ml: 500)
+                Spacer()
+                if water.totalMl > 0 {
+                    Button {
+                        Task { await add(-min(200, water.totalMl)) }
+                    } label: {
+                        Text("撤销 200")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .disabled(adding)
+                }
+            }
+        }
+        .padding(14)
+        .cardStyle()
+    }
+
+    private func quickButton(_ label: String, ml: Int) -> some View {
+        Button {
+            Task { await add(ml) }
+        } label: {
+            Text(label)
+                .font(.caption.bold())
+                .padding(.horizontal, 14).padding(.vertical, 7)
+                .background(Capsule().fill(Color.brandBlue.opacity(0.14)))
+                .foregroundStyle(.brandBlue)
+        }
+        .disabled(adding)
+        .buttonStyle(.plain)
+    }
+
+    private func add(_ ml: Int) async {
+        adding = true
+        defer { adding = false }
+        struct Body: Codable { let amountMl: Int }
+        if let fresh: WaterToday = try? await APIClient.shared.post(path: "/water", body: Body(amountMl: ml)) {
+            water = fresh
+            Haptics.light()
+        }
     }
 }
 

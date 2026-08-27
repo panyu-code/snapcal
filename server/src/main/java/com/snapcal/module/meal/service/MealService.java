@@ -3,6 +3,7 @@ package com.snapcal.module.meal.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.snapcal.common.exception.BizException;
 import com.snapcal.module.meal.dto.MealSaveReqDTO;
+import com.snapcal.module.meal.dto.MealUpdateReqDTO;
 import com.snapcal.module.meal.entity.Meal;
 import com.snapcal.module.meal.entity.MealItem;
 import com.snapcal.module.meal.mapper.MealItemMapper;
@@ -38,6 +39,7 @@ public class MealService {
         meal.setMealType(dto.getMealType());
         meal.setPhotoUrl(dto.getPhotoUrl());
         meal.setEatTime(dto.getEatTime() != null ? dto.getEatTime() : LocalDateTime.now());
+        meal.setNote(dto.getNote());
 
         int totalKcal = 0;
         double totalProtein = 0, totalCarbs = 0, totalFat = 0;
@@ -134,6 +136,64 @@ public class MealService {
         return result;
     }
 
+
+    /** 编辑餐次 (备注/类型/明细份量), 重建明细并重新汇总 */
+    @Transactional
+    public MealVO update(Long mealId, MealUpdateReqDTO dto) {
+        Long userId = UserContext.requireUserId();
+        Meal meal = mealMapper.selectById(mealId);
+        if (meal == null || !meal.getUserId().equals(userId)) {
+            throw new BizException("餐次不存在");
+        }
+        meal.setMealType(dto.getMealType());
+        meal.setNote(dto.getNote());
+        applyItems(meal, dto.getItems());
+        mealMapper.updateById(meal);
+
+        List<MealVO.Item> voItems = itemMapper.selectList(
+                        new LambdaQueryWrapper<MealItem>().eq(MealItem::getMealId, mealId))
+                .stream().map(mi -> {
+                    MealVO.Item i = new MealVO.Item();
+                    i.setFoodName(mi.getFoodName());
+                    i.setWeightG(mi.getWeightG());
+                    i.setKcal(mi.getKcal());
+                    i.setProteinG(mi.getProteinG());
+                    i.setCarbsG(mi.getCarbsG());
+                    i.setFatG(mi.getFatG());
+                    i.setSource(mi.getSource());
+                    return i;
+                }).toList();
+        log.info("餐次编辑: user={} mealId={} kcal={}", userId, mealId, meal.getTotalKcal());
+        return toVO(meal, voItems);
+    }
+
+    /** 清空旧明细, 按新明细写入并汇总营养到 meal */
+    private void applyItems(Meal meal, List<MealUpdateReqDTO.Item> items) {
+        itemMapper.delete(new LambdaQueryWrapper<MealItem>().eq(MealItem::getMealId, meal.getId()));
+        int totalKcal = 0;
+        double totalProtein = 0, totalCarbs = 0, totalFat = 0;
+        for (MealUpdateReqDTO.Item i : items) {
+            MealItem mi = new MealItem();
+            mi.setMealId(meal.getId());
+            mi.setFoodName(i.getFoodName());
+            mi.setWeightG(i.getWeightG());
+            mi.setKcal(i.getKcal() != null ? i.getKcal() : 0);
+            mi.setProteinG(i.getProteinG() != null ? i.getProteinG() : 0);
+            mi.setCarbsG(i.getCarbsG() != null ? i.getCarbsG() : 0);
+            mi.setFatG(i.getFatG() != null ? i.getFatG() : 0);
+            mi.setSource(i.getSource() != null ? i.getSource() : "AI");
+            itemMapper.insert(mi);
+            totalKcal += mi.getKcal();
+            totalProtein += mi.getProteinG();
+            totalCarbs += mi.getCarbsG();
+            totalFat += mi.getFatG();
+        }
+        meal.setTotalKcal(totalKcal);
+        meal.setProteinG(totalProtein);
+        meal.setCarbsG(totalCarbs);
+        meal.setFatG(totalFat);
+    }
+
     /** 删除餐次 */
     @Transactional
     public void delete(Long mealId) {
@@ -156,6 +216,7 @@ public class MealService {
         vo.setCarbsG(meal.getCarbsG());
         vo.setFatG(meal.getFatG());
         vo.setEatTime(meal.getEatTime());
+        vo.setNote(meal.getNote());
         vo.setItems(items);
         return vo;
     }

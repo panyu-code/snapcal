@@ -7,21 +7,16 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 import java.util.List;
 
+/** 编辑餐次 (改备注 / 餐次类型 / 明细份量) */
 @Data
-public class MealSaveReqDTO implements Serializable {
+public class MealUpdateReqDTO implements Serializable {
 
     @NotBlank(message = "餐次类型不能为空")
     @Pattern(regexp = "^(BREAKFAST|LUNCH|DINNER|SNACK)$", message = "餐次类型不合法")
     private String mealType;
 
-    private String photoUrl;
-
-    private LocalDateTime eatTime;
-
-    /** 备注 (选填) */
     private String note;
 
     @NotEmpty(message = "食物明细不能为空")

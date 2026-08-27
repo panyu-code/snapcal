@@ -2,6 +2,7 @@ package com.snapcal.module.meal.controller;
 
 import com.snapcal.common.result.Result;
 import com.snapcal.module.meal.dto.MealSaveReqDTO;
+import com.snapcal.module.meal.dto.MealUpdateReqDTO;
 import com.snapcal.module.meal.service.MealService;
 import com.snapcal.module.meal.vo.MealVO;
 import jakarta.validation.Valid;
@@ -36,6 +37,12 @@ public class MealController {
             @RequestParam(defaultValue = "7") int days) {
         int bounded = Math.min(Math.max(days, 1), 90);
         return Result.success(mealService.range(bounded));
+    }
+
+    /** 编辑餐次 (备注/类型/份量) */
+    @PutMapping("/{id}")
+    public Result<MealVO> update(@PathVariable Long id, @Valid @RequestBody MealUpdateReqDTO dto) {
+        return Result.success(mealService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")

@@ -43,6 +43,15 @@ final class CacheStore {
         try? context.save()
     }
 
+    func remove(key: String) {
+        guard let context else { return }
+        let fetch = FetchDescriptor<CachedPayload>(predicate: #Predicate { $0.key == key })
+        if let existing = try? context.fetch(fetch).first {
+            context.delete(existing)
+            try? context.save()
+        }
+    }
+
     func load<T: Decodable>(_ type: T.Type, key: String) -> T? {
         guard let context else { return nil }
         let fetch = FetchDescriptor<CachedPayload>(predicate: #Predicate { $0.key == key })

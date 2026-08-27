@@ -34,6 +34,7 @@ struct Meal: Codable, Identifiable {
     var carbsG: Double?
     var fatG: Double?
     var eatTime: String?
+    var note: String?
     var items: [MealItem]?
 
     struct MealItem: Codable, Identifiable {
@@ -52,7 +53,7 @@ struct Meal: Codable, Identifiable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, mealType, photoUrl, totalKcal, proteinG, carbsG, fatG, eatTime, items
+        case id, mealType, photoUrl, totalKcal, proteinG, carbsG, fatG, eatTime, note, items
     }
 
     var mealTypeName: String {
@@ -69,6 +70,7 @@ struct MealSaveReq: Codable {
     var mealType: String
     var photoUrl: String?
     var eatTime: String?
+    var note: String?
     var items: [MealSaveItem]
 
     struct MealSaveItem: Codable {

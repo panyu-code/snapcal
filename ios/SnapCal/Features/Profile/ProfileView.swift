@@ -12,6 +12,7 @@ struct ProfileView: View {
     @State private var avatarUploading = false
     @State private var avatarDraft: AvatarDraft?
     @State private var showFoodLibrary = false
+    @State private var showReminder = false
 
     private var user: User? { app.user }
 
@@ -45,6 +46,9 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showFoodLibrary) {
                 FoodLibraryView()
+            }
+            .sheet(isPresented: $showReminder) {
+                ReminderSettingsView()
             }
             .sheet(item: $avatarDraft) { draft in
                 AvatarEditorView(image: draft.image) { cropped in
@@ -168,6 +172,8 @@ struct ProfileView: View {
             Divider().overlay(Color.dividerLine)
             cell(icon: "📦", title: "食物库", value: "622 种") { showFoodLibrary = true }
             Divider().overlay(Color.dividerLine)
+            cell(icon: "⏰", title: "用餐提醒", value: reminderSummary) { showReminder = true }
+            Divider().overlay(Color.dividerLine)
             cell(icon: "❤️", title: "健康数据 (Apple 健康)", value: "M4") {}
             Divider().overlay(.weakFill)
             cell(icon: "💎", title: "SnapCal Pro", value: "M5") {}
@@ -176,6 +182,12 @@ struct ProfileView: View {
         }
         .padding(.vertical, 4)
         .cardStyle()
+    }
+
+    private var reminderSummary: String {
+        ReminderManager.shared.isEnabled
+            ? ReminderManager.shared.times.map { String(format: "%02d:%02d", $0.0, $0.1) }.joined(separator: " ")
+            : "关"
     }
 
     private func uploadAvatarImage(_ image: UIImage) async {

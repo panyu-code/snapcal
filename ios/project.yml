@@ -10,13 +10,21 @@ settings:
     SWIFT_VERSION: "5.9"
     DEVELOPMENT_TEAM: 9FSXKC3754
 
+schemes:
+  SnapCal:
+    build:
+      targets:
+        SnapCal: all
+    test:
+      targets:
+        - SnapCalUITests
+
 targets:
   SnapCal:
     type: application
     platform: iOS
     sources:
       - SnapCal
-    scheme: {}
     info:
       path: SnapCal/Info.plist
       properties:
@@ -57,3 +65,17 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+
+  SnapCalUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - SnapCalUITests
+    dependencies:
+      - target: SnapCal
+    info:
+      path: SnapCalUITests/Info.plist
+      properties:
+        CFBundleDisplayName: SnapCalUITests
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
