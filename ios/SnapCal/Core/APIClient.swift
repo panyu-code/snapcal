@@ -20,12 +20,9 @@ final class APIClient {
 
     static let shared = APIClient()
 
-    /// 开发服务器 (上架前替换为 HTTPS 域名)
-    #if DEBUG
-    static let baseURL = URL(string: "http://myblog.wiki:8081/api")!
-    #else
-    static let baseURL = URL(string: "https://api.myblog.wiki/api")!
-    #endif
+    /// 统一入口: Docker Nginx /snapcal/ → snapcal-server:8081
+    /// 服务端 8081 直连仍可用作兜底; 上架前替换为 HTTPS 域名
+    static let baseURL = URL(string: "http://myblog.wiki/snapcal/api")!
 
     private let session: URLSession
 

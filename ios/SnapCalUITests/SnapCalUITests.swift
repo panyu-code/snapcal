@@ -10,7 +10,7 @@ final class SnapCalUITests: XCTestCase {
 
     /// 直接调后端 dev-login 拿 token (runner 进程有网络)
     private func fetchToken() -> String {
-        var req = URLRequest(url: URL(string: "http://myblog.wiki:8081/api/auth/dev-login")!)
+        var req = URLRequest(url: URL(string: "http://myblog.wiki/snapcal/api/auth/dev-login")!)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try? JSONEncoder().encode(["username": "yupan"])
@@ -59,7 +59,7 @@ final class SnapCalUITests: XCTestCase {
     /// 清空今天的餐次 (测试数据隔离)
     private func cleanupTodayMeals() {
         let token = fetchToken()
-        var req = URLRequest(url: URL(string: "http://myblog.wiki:8081/api/meal/day")!)
+        var req = URLRequest(url: URL(string: "http://myblog.wiki/snapcal/api/meal/day")!)
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         let sem = DispatchSemaphore(value: 0)
         URLSession.shared.dataTask(with: req) { data, _, _ in
@@ -70,7 +70,7 @@ final class SnapCalUITests: XCTestCase {
             let group = DispatchGroup()
             for meal in meals {
                 guard let id = meal["id"] as? Int else { continue }
-                var del = URLRequest(url: URL(string: "http://myblog.wiki:8081/api/meal/\(id)")!)
+                var del = URLRequest(url: URL(string: "http://myblog.wiki/snapcal/api/meal/\(id)")!)
                 del.httpMethod = "DELETE"
                 del.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 group.enter()
@@ -130,7 +130,7 @@ final class SnapCalUITests: XCTestCase {
         let app = launchToMain()
 
         // 切到记录 tab
-        app.tabBars.buttons["记录"].tap()
+        app.tabBars.buttons["记录"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["饮食记录"].waitForExistence(timeout: 6))
 
         // 点含「米饭」的餐卡进详情 (食物 chip 文本: "🍚 米饭 100g")
@@ -147,7 +147,7 @@ final class SnapCalUITests: XCTestCase {
     func test04_ReminderSettingsEntry() throws {
         let app = launchToMain()
 
-        app.tabBars.buttons["我的"].tap()
+        app.tabBars.buttons["我的"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["用餐提醒"].waitForExistence(timeout: 6))
         app.staticTexts["用餐提醒"].tap()
         XCTAssertTrue(app.staticTexts["每日用餐提醒"].waitForExistence(timeout: 6), "应打开提醒设置页")

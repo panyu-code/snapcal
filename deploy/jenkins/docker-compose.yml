@@ -1,0 +1,50 @@
+# ============================================================
+# SnapCal CI/CD 基础设施: Jenkins + Nginx (统一入口)
+# 部署路径: /opt/snapcal/deploy/
+#   docker compose up -d jenkins   # 先起 Jenkins
+#   docker compose up -d nginx     # 切换 80 端口时再起 nginx
+# ============================================================
+
+services:
+
+  jenkins:
+    image: snapcal-jenkins:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    container_name: snapcal-jenkins
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:8080"   # 仅本机调试兜底, 对外统一走 nginx 80 /jenkins
+    environment:
+      - TZ=Asia/Shanghai
+      # 走 nginx 80 端口反代 (UI 与 webhook 均为 http://myblog.wiki/jenkins/...), 无需放行 9090
+      - JENKINS_OPTS=--prefix=/jenkins
+    volumes:
+      # 绑定挂载宿主目录: 流水线内 docker run -v 需要宿主真实路径
+      - /opt/jenkins/home:/var/jenkins_home
+      # 操作宿主 docker (build 镜像 / 重启 snapcal 容器)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # maven 缓存复用 (与手工构建共用, 加速流水线)
+      - /opt/dataviz/.m2:/opt/maven-cache
+    networks:
+      - dataviz-net
+    mem_limit: 900m
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: snapcal-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d:ro
+      - /opt/dataviz/web:/usr/share/nginx/dataviz-web:ro   # dataviz 前端静态
+    networks:
+      - dataviz-net
+    mem_limit: 128m
+
+networks:
+  dataviz-net:
+    external: true
+    name: dataviz_dataviz-net

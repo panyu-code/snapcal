@@ -1,0 +1,28 @@
+# ============================================================
+# Jenkins CI 镜像: LTS + JDK17 + Docker CLI + Git
+# 挂载宿主 /var/run/docker.sock 后可在流水线内 docker build/run
+# ============================================================
+FROM jenkins/jenkins:lts-jdk17
+
+USER root
+
+# docker CLI (仅客户端, 通过 socket 操作宿主 docker)
+RUN curl -fsSL https://download.docker.com/linux/static/stable/$(uname -m)/docker-27.3.1.tgz \
+        -o /tmp/docker.tgz \
+    && tar -xzf /tmp/docker.tgz -C /tmp \
+    && mv /tmp/docker/docker /usr/local/bin/docker \
+    && rm -rf /tmp/docker /tmp/docker.tgz \
+    && groupadd -g 999 docker || true \
+    && usermod -aG docker jenkins
+
+# 常用工具
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates tzdata \
+    && rm -rf /var/lib/apt/lists/* \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone
+
+USER jenkins
+
+# 限内存, 3.6G 小服务器防 OOM
+ENV JAVA_OPTS="-Xmx512m -Dhudson.plugins.git.GitSCM.FAIL_NO_WORKSPACE=false -Dorg.jenkinsci.plugins.gitclient.Git.useCLI=false"
