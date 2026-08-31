@@ -45,9 +45,11 @@ echo "容器状态: $(docker ps --filter name=$CONTAINER --format "{{.Status}}")
 echo "CI 部署 build-${BUILD_NUMBER:-manual} $IMAGE @ $(date "+%F %T")"
 
 # 4. 健康检查 (最多等 40s, /api/health 无需鉴权)
+# 兼容两种运行环境: 宿主机直跑(127.0.0.1) / Jenkins 容器内(容器名走 docker 网络)
 ok=""
 for i in $(seq 1 20); do
     code=$(curl -s -m 2 http://127.0.0.1:8081/api/health -o /dev/null -w "%{http_code}" || true)
+    [ "$code" = "200" ] || code=$(curl -s -m 2 http://snapcal-server:8081/api/health -o /dev/null -w "%{http_code}" || true)
     if [ "$code" = "200" ]; then ok=1; break; fi
     sleep 2
 done
