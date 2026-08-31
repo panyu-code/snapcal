@@ -417,3 +417,35 @@ SnapCal/
 ---
 
 > **SnapCal** — 拍一下，吃明白。📸
+
+---
+
+## 十二、CI/CD 自动化部署 (Jenkins + Docker Nginx)
+
+### 架构
+
+```
+GitHub push (main)
+  └→ webhook / 2分钟轮询 → Jenkins (Docker, http://myblog.wiki/jenkins/)
+       └─ Jenkinsfile: 拉码(gh-proxy镜像) → Maven容器构建(复用/opt/dataviz/.m2)
+                       → docker build → 幂等部署 → 健康检查
+
+Docker Nginx (80 端口统一入口):
+  ├─ myblog.wiki/          → dataviz 前端静态
+  ├─ myblog.wiki/api/      → dataviz-server:8080
+  └─ myblog.wiki/snapcal/  → snapcal-server:8081  (App API 入口, 8081 直连兜底)
+```
+
+### 组件
+
+| 组件 | 说明 |
+|------|------|
+| Jenkins | `deploy/jenkins/` (Dockerfile + compose)，账号见服务器，走 `/jenkins` 反代无需额外端口 |
+| 流水线 | 根目录 `Jenkinsfile`，job 名 `snapcal`，双触发：GitHub webhook + H/2 轮询 |
+| 部署脚本 | `deploy/jenkins/deploy.sh`（幂等：构建镜像 → 重建容器 → 健康检查，失败不替换旧容器） |
+| 镜像加速 | Jenkins 容器 git 配置 `gh-proxy.com` insteadOf（国内直连 GitHub 不通） |
+| 内存保障 | 服务器 +2G swap；Jenkins 限 512M、Maven 构建容器限 1.2G |
+
+### SQL 迁移说明
+
+`deploy/sql/*.sql` 不进流水线（ALTER 非幂等），需要时手动在 MySQL 容器执行。
