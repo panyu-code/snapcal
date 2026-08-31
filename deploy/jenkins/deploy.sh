@@ -10,7 +10,6 @@ set -e
 
 CONTAINER=snapcal-server
 IMAGE=${IMAGE:-snapcal-server:latest}
-LOG_FILE=/opt/snapcal/server/snapcal.log
 
 echo "===== 部署 SnapCal 后端: $IMAGE ====="
 
@@ -41,10 +40,9 @@ docker run -d \
 
 echo "容器状态: $(docker ps --filter name=$CONTAINER --format "{{.Status}}")"
 
-# 3. 日志接管
-echo "" >> "$LOG_FILE"
-echo "========== $(date "+%F %T") CI 部署 (build-${BUILD_NUMBER:-manual}) $IMAGE ==========" >> "$LOG_FILE"
-nohup docker logs -f $CONTAINER >> "$LOG_FILE" 2>&1 &
+# 3. 日志: 由 docker 自身管理, 查看用 docker logs snapcal-server
+#    (脚本运行在 Jenkins 容器内, 不能写宿主路径; 历史日志见流水线控制台)
+echo "CI 部署 build-${BUILD_NUMBER:-manual} $IMAGE @ $(date "+%F %T")"
 
 # 4. 健康检查 (最多等 40s, /api/health 无需鉴权)
 ok=""

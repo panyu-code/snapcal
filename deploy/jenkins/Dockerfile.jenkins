@@ -12,8 +12,8 @@ RUN curl -fsSL https://download.docker.com/linux/static/stable/$(uname -m)/docke
     && tar -xzf /tmp/docker.tgz -C /tmp \
     && mv /tmp/docker/docker /usr/local/bin/docker \
     && rm -rf /tmp/docker /tmp/docker.tgz \
-    && groupadd -g 999 docker || true \
-    && usermod -aG docker jenkins
+    && groupadd -g 989 sockdocker || true \
+    && usermod -aG sockdocker jenkins
 
 # 常用工具
 RUN apt-get update \
