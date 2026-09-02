@@ -115,7 +115,7 @@ class _LoginViewState extends State<LoginView> {
     try {
       await ApiClient.instance.sendEmailCode(
         _emailController.text.trim(),
-        purpose: _mode == _AuthMode.register ? 'register' : 'password_reset',
+        purpose: _mode == _AuthMode.register ? 'REGISTER' : 'RESET_PASSWORD',
       );
       if (!mounted) return;
       setState(() {

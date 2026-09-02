@@ -105,7 +105,7 @@ class ApiClient {
   Future<(String, User)> login(String account, String password) async {
     final d = await post(
       '/auth/login',
-      body: {'account': account, 'password': password},
+      body: {'username': account, 'password': password},
       fromJson: (d) => d as Map<String, dynamic>,
     );
     return (d['token'] as String, User.fromJson(d['user']));
