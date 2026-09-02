@@ -449,3 +449,11 @@ Docker Nginx (80 端口统一入口):
 ### SQL 迁移说明
 
 `deploy/sql/*.sql` 不进流水线（ALTER 非幂等），需要时手动在 MySQL 容器执行。
+
+---
+
+## 十三、Flutter 双端版本
+
+Flutter 重构版位于 `flutter_app/`，旧 SwiftUI 版保留不动。功能覆盖：引导/登录、今日概览、GLM-5.3-flash 拍照识别、手动记录、食物搜索收藏、记录详情编辑、食物库、趋势、头像资料、双主题、饮水和用餐提醒。
+
+验证结果：`flutter analyze` 零问题、单元/组件测试 5/5、Android Pixel_8 端到端集成测试通过、iOS iPhone 17 模拟器构建并启动通过。Android 正式签名包本地路径：`flutter_app/dist/SnapCal-1.0.0-android-release.apk`（APK 不提交 Git）。
