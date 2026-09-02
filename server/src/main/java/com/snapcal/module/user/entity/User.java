@@ -16,8 +16,17 @@ public class User implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    /** Apple 用户唯一标识 (sub) / dev_xxx 开发账号 */
+    /** Apple 用户唯一标识 (sub) / dev_xxx 开发账号；账号密码用户可为空 */
     private String appleUserId;
+
+    /** 正式账号用户名，统一以小写存储 */
+    private String username;
+
+    /** 正式账号邮箱，统一以小写存储 */
+    private String email;
+
+    /** BCrypt 密码摘要，Apple/dev 用户可为空 */
+    private String passwordHash;
 
     private String nickname;
 
@@ -42,4 +51,7 @@ public class User implements Serializable {
 
     @TableField(fill = com.baomidou.mybatisplus.annotation.FieldFill.INSERT)
     private LocalDateTime createTime;
+
+    /** 最近登录时间 */
+    private LocalDateTime lastLoginTime;
 }

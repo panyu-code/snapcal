@@ -5,8 +5,13 @@ import com.snapcal.common.exception.BizException;
 import com.snapcal.common.result.ResultCode;
 import com.snapcal.module.user.dto.AppleLoginReqDTO;
 import com.snapcal.module.user.dto.DevLoginReqDTO;
+import com.snapcal.module.user.dto.PasswordLoginReqDTO;
+import com.snapcal.module.user.dto.PasswordRegisterReqDTO;
 import com.snapcal.module.user.dto.ProfileUpdateReqDTO;
+import com.snapcal.module.user.dto.ResetPasswordReqDTO;
+import com.snapcal.module.user.dto.SendEmailCodeReqDTO;
 import com.snapcal.module.user.entity.User;
+import com.snapcal.module.user.service.EmailVerificationService;
 import com.snapcal.module.user.entity.Weight;
 import com.snapcal.module.user.mapper.UserMapper;
 import com.snapcal.config.oss.OssService;
@@ -20,6 +25,7 @@ import com.snapcal.security.JwtUtil;
 import com.snapcal.security.UserContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +45,8 @@ public class UserServiceImpl implements UserService {
     private final OssService ossService;
     private final AppleTokenVerifier appleTokenVerifier;
     private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     @Value("${snapcal.dev-mode:true}")
     private boolean devMode;
@@ -132,6 +140,97 @@ public class UserServiceImpl implements UserService {
         } catch (Exception e) {
             throw new BizException("头像上传失败");
         }
+    }
+
+
+    // ===================== 正式账号体系 =====================
+
+    @Override
+    public void sendEmailCode(SendEmailCodeReqDTO dto) {
+        // 注册用途: 邮箱已被注册则拒绝, 防止撞库枚举与无谓发信
+        if (EmailVerificationService.REGISTER.equals(dto.getPurpose())) {
+            User existing = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                    .eq(User::getEmail, normalizeEmail(dto.getEmail())).last("LIMIT 1"));
+            if (existing != null) {
+                throw new BizException(ResultCode.EMAIL_EXISTS);
+            }
+        } else {
+            // 重置密码: 邮箱不存在也拒绝 (统一提示, 不暴露注册状态差异)
+            User existing = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                    .eq(User::getEmail, normalizeEmail(dto.getEmail())).last("LIMIT 1"));
+            if (existing == null) {
+                throw new BizException("该邮箱尚未注册");
+            }
+        }
+        emailVerificationService.send(dto.getEmail(), dto.getPurpose());
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> register(PasswordRegisterReqDTO dto) {
+        String username = dto.getUsername().trim();
+        String email = normalizeEmail(dto.getEmail());
+
+        User byName = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, username).last("LIMIT 1"));
+        if (byName != null) {
+            throw new BizException(ResultCode.USERNAME_EXISTS);
+        }
+        User byEmail = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getEmail, email).last("LIMIT 1"));
+        if (byEmail != null) {
+            throw new BizException(ResultCode.EMAIL_EXISTS);
+        }
+        emailVerificationService.verifyAndConsume(email, EmailVerificationService.REGISTER, dto.getCode());
+
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(dto.getPassword()));
+        user.setNickname(username);
+        user.setTargetType("LOSE");
+        user.setDailyKcalTarget(2200);
+        try {
+            userMapper.insert(user);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            throw new BizException(ResultCode.USERNAME_EXISTS);
+        }
+        log.info("账号注册: id={} username={}", user.getId(), username);
+        return loginResult(user);
+    }
+
+    @Override
+    public Map<String, Object> passwordLogin(PasswordLoginReqDTO dto) {
+        String account = dto.getUsername().trim();
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .and(w -> w.eq(User::getUsername, account).or().eq(User::getEmail, normalizeEmail(account)))
+                .last("LIMIT 1"));
+        if (user == null || !StringUtils.hasText(user.getPasswordHash())
+                || !passwordEncoder.matches(dto.getPassword(), user.getPasswordHash())) {
+            throw new BizException("账号或密码错误");
+        }
+        user.setLastLoginTime(java.time.LocalDateTime.now());
+        userMapper.updateById(user);
+        return loginResult(user);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordReqDTO dto) {
+        String email = normalizeEmail(dto.getEmail());
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getEmail, email).last("LIMIT 1"));
+        if (user == null || !StringUtils.hasText(user.getPasswordHash())) {
+            throw new BizException("该邮箱尚未注册账号");
+        }
+        emailVerificationService.verifyAndConsume(email, EmailVerificationService.RESET_PASSWORD, dto.getCode());
+        user.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));
+        userMapper.updateById(user);
+        log.info("密码重置: id={}", user.getId());
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 
     // ===================== 内部 =====================

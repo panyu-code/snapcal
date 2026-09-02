@@ -99,15 +99,48 @@ class ApiClient {
 
   Future<User> me() => get('/user/me', fromJson: (d) => User.fromJson(d));
 
-  Future<(String, User)> devLogin(String username) async {
-    final d = await post('/auth/dev-login', body: {'username': username}, fromJson: (d) => d);
+  Future<void> sendEmailCode(String email, {required String purpose}) =>
+      postVoid('/auth/email-code', body: {'email': email, 'purpose': purpose});
+
+  Future<(String, User)> login(String account, String password) async {
+    final d = await post(
+      '/auth/login',
+      body: {'account': account, 'password': password},
+      fromJson: (d) => d as Map<String, dynamic>,
+    );
     return (d['token'] as String, User.fromJson(d['user']));
   }
 
-  Future<(String, User)> appleLogin(String identityToken, String? nickname) async {
-    final d = await post('/auth/apple', body: {'identityToken': identityToken, 'nickname': nickname}, fromJson: (d) => d);
+  Future<(String, User)> register({
+    required String username,
+    required String email,
+    required String password,
+    required String code,
+  }) async {
+    final d = await post(
+      '/auth/register',
+      body: {
+        'username': username,
+        'email': email,
+        'password': password,
+        'code': code,
+      },
+      fromJson: (d) => d as Map<String, dynamic>,
+    );
     return (d['token'] as String, User.fromJson(d['user']));
   }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) =>
+      postVoid('/auth/password/reset',
+          body: {'email': email, 'code': code, 'newPassword': newPassword});
+
+  /// POST 但后端 data 为 null (只校验 code)
+  Future<void> postVoid(String path, {Object? body}) =>
+      post(path, body: body, fromJson: (_) => const <String, dynamic>{});
 
   Future<User> updateProfile(Map<String, dynamic> body) => put('/user/profile', body: body, fromJson: (d) => User.fromJson(d));
 

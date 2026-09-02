@@ -75,8 +75,8 @@ class Prefs {
   static bool get onboarded => _p.getBool('snapcal-onboarded') ?? false;
   static set onboarded(bool v) => _p.setBool('snapcal-onboarded', v);
 
-  static String get devUsername => _p.getString('devUsername') ?? '';
-  static set devUsername(String v) => _p.setString('devUsername', v);
+  static String get loginAccount => _p.getString('snapcal-login-account') ?? '';
+  static set loginAccount(String v) => _p.setString('snapcal-login-account', v);
 
   /// 0 system / 1 light / 2 dark
   static int get themeMode => _p.getInt('snapcal-theme') ?? 0;

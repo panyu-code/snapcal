@@ -23,19 +23,17 @@ fi
 docker rm -f $CONTAINER >/dev/null 2>&1
 sleep 1
 
+ENV_FILE=/opt/snapcal/server/.env
+if [ ! -f "$ENV_FILE" ]; then
+  echo "‼️ 缺少服务器环境文件: $ENV_FILE"
+  exit 1
+fi
+
 docker run -d \
   --name $CONTAINER \
   --network dataviz_dataviz-net \
   -p 8081:8081 \
-  -e MYSQL_HOST=dataviz-mysql \
-  -e MYSQL_PORT=3306 \
-  -e MYSQL_USER=root \
-  -e MYSQL_PASSWORD=YuPan95270. \
-  -e DEV_MODE=true \
-  -e VISION_PROVIDER=glm \
-  -e VISION_API_KEY=6bcce00730c440d483740d9630a3187f.QvRtjCpbRoMVel1B \
-  -e VISION_MODEL=glm-5.3-flash \
-  -e VISION_API_URL=https://open.bigmodel.cn/api/coding/paas/v4/chat/completions \
+  --env-file "$ENV_FILE" \
   --restart=always \
   "$IMAGE" >/dev/null
 

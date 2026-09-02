@@ -11,6 +11,21 @@ spring:
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:YuPan95270.}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  mail:
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
   servlet:
     multipart:
       max-file-size: 10MB
@@ -38,6 +53,9 @@ snapcal:
     audience: ${APPLE_BUNDLE_ID:com.yupan.snapcal}
   # 开发模式: 允许 /auth/dev-login (上架前关闭)
   dev-mode: ${DEV_MODE:true}
+  auth:
+    mail-from: ${MAIL_FROM:${MAIL_USERNAME:}}
+    code-expire-minutes: ${AUTH_CODE_EXPIRE_MINUTES:10}
   # 对象存储 (复用 dataviz 的 RustFS 实例)
   oss:
     endpoint: ${OSS_ENDPOINT:http://dataviz-rustfs:9000}

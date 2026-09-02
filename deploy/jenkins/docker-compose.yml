@@ -27,6 +27,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       # maven 缓存复用 (与手工构建共用, 加速流水线)
       - /opt/dataviz/.m2:/opt/maven-cache
+      # 后端敏感环境变量 (Jenkins 仅只读, deploy.sh 用 --env-file)
+      - /opt/snapcal/server/.env:/opt/snapcal/server/.env:ro
     networks:
       - dataviz-net
     mem_limit: 900m

@@ -10,7 +10,7 @@ class AppModel extends ChangeNotifier {
   bool booted = false;
 
   bool get isLoggedIn => user != null;
-  String get devUsername => Prefs.devUsername;
+  String get loginAccount => Prefs.loginAccount;
 
   /// 启动恢复会话: 有缓存用户直接进主界面, 仅明确 401 才登出
   Future<void> restoreSession() async {
@@ -35,20 +35,32 @@ class AppModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> devLogin(String username) async {
-    final (token, u) = await ApiClient.instance.devLogin(username);
-    await TokenStore.write(token);
-    user = u;
-    Prefs.devUsername = username;
-    await CacheStore.save('me', u.toJson());
-    notifyListeners();
+  Future<void> login(String account, String password) async {
+    final (token, u) = await ApiClient.instance.login(account, password);
+    await _saveSession(token, u);
+    Prefs.loginAccount = account;
   }
 
-  Future<void> appleLogin(String identityToken, String? nickname) async {
-    final (token, u) = await ApiClient.instance.appleLogin(identityToken, nickname);
+  Future<void> register({
+    required String username,
+    required String email,
+    required String password,
+    required String code,
+  }) async {
+    final (token, u) = await ApiClient.instance.register(
+      username: username,
+      email: email,
+      password: password,
+      code: code,
+    );
+    await _saveSession(token, u);
+    Prefs.loginAccount = username;
+  }
+
+  Future<void> _saveSession(String token, User currentUser) async {
     await TokenStore.write(token);
-    user = u;
-    await CacheStore.save('me', u.toJson());
+    user = currentUser;
+    await CacheStore.save('me', currentUser.toJson());
     notifyListeners();
   }
 

@@ -258,7 +258,11 @@ CREATE TABLE sc_weight (
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/auth/apple` | Apple 登录（identityToken 校验） |
+| POST | `/api/auth/apple` | Apple 登录（identityToken 校验，兼容旧版） |
+| POST | `/api/auth/register` | 用户名+邮箱+验证码注册 |
+| POST | `/api/auth/login` | 用户名或邮箱+密码登录 |
+| POST | `/api/auth/email-code` | 发送邮箱验证码（注册/找回） |
+| POST | `/api/auth/password/reset` | 邮箱验证码重置密码 |
 | GET | `/api/user/me` | 个人资料 + 目标 |
 | PUT | `/api/user/profile` | 更新身高/目标等 → 重算每日热量 |
 | **POST** | **`/api/vision/recognize`** | **上传餐盘照片 → AI 返回识别结果**（核心） |

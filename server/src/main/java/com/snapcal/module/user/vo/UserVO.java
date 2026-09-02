@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 public class UserVO implements Serializable {
 
     private Long id;
+    private String username;
+    private String email;
     private String nickname;
     private String avatar;
     private Integer gender;
@@ -26,6 +28,8 @@ public class UserVO implements Serializable {
     public static UserVO of(User user, Double currentWeightKg) {
         UserVO vo = new UserVO();
         vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setEmail(user.getEmail());
         vo.setNickname(user.getNickname());
         vo.setAvatar(user.getAvatar());
         vo.setGender(user.getGender());
