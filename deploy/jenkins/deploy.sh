@@ -33,8 +33,9 @@ docker run -d \
   -e MYSQL_PASSWORD=YuPan95270. \
   -e DEV_MODE=true \
   -e VISION_PROVIDER=glm \
-  -e VISION_API_KEY=02a6f3f5298c42c58926134b989d8e3c.LnR5sGZSqJy9YP4w \
-  -e VISION_MODEL=glm-4v-flash \
+  -e VISION_API_KEY=6bcce00730c440d483740d9630a3187f.QvRtjCpbRoMVel1B \
+  -e VISION_MODEL=glm-5.3-flash \
+  -e VISION_API_URL=https://open.bigmodel.cn/api/coding/paas/v4/chat/completions \
   --restart=always \
   "$IMAGE" >/dev/null
 
